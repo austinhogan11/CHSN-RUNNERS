@@ -1,0 +1,14 @@
+[project]
+name = "chsn-runner-api"
+version = "0.1.0"
+description = "Backend API for the CHSN-RUNNERS endurance training platform"
+readme = "README.md"
+authors = [
+    { name = "Austin Hogan", email = "austinhogan15@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
