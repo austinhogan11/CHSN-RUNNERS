@@ -18,3 +18,9 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "runner_api"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
