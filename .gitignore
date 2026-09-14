@@ -1,0 +1,59 @@
+# -----------------------------
+# Environment / secrets
+# -----------------------------
+.env
+.env.*
+!.env.example
+
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+venv/
+env/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# -----------------------------
+# Node / React / TypeScript
+# -----------------------------
+node_modules/
+
+dist/
+build/
+coverage/
+
+*.tsbuildinfo
+
+# -----------------------------
+# IDE / editor
+# -----------------------------
+.vscode/
+.idea/
+
+# -----------------------------
+# macOS
+# -----------------------------
+.DS_Store
+
+# -----------------------------
+# Logs
+# -----------------------------
+*.log
+
+# -----------------------------
+# Temporary files
+# -----------------------------
+*.tmp
+*.swp
+*.swo
