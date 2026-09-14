@@ -1,0 +1,33 @@
+[project]
+name = "chsn-runner-api"
+version = "0.1.0"
+description = "Backend API for the CHSN-RUNNERS endurance training platform"
+readme = "README.md"
+authors = [
+    { name = "Austin Hogan", email = "austinhogan15@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141.1",
+    "uvicorn>=0.52.4",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "runner_api"
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.12.0",
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "ruff>=0.16.7",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning:starlette.testclient",
+]
