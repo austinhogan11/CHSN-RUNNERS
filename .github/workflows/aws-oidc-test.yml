@@ -48,7 +48,7 @@ jobs:
           PY
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::537690166345:role/chsn-runners-github-actions
           aws-region: us-east-1
