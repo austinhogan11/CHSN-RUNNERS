@@ -34,7 +34,11 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       variable = "token.actions.githubusercontent.com:sub"
 
       values = [
+<<<<<<< HEAD
         "repo:austinhogan11@60478173/CHSN-RUNNERS@1367812655:*",
+=======
+        "repo:austinhogan11/CHSN-RUNNERS:*",
+>>>>>>> origin/main
       ]
     }
   }
