@@ -72,6 +72,33 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "${aws_s3_bucket.terraform_state.arn}/runner/*",
     ]
   }
+
+  statement {
+    sid = "RunnerWebBucket"
+
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:GetBucketAcl",
+      "s3:GetBucketCORS",
+      "s3:GetBucketLocation",
+      "s3:GetBucketLogging",
+      "s3:GetBucketPolicy",
+      "s3:GetBucketPolicyStatus",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:GetBucketRequestPayment",
+      "s3:GetBucketTagging",
+      "s3:GetBucketVersioning",
+      "s3:GetBucketWebsite",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:PutBucketTagging",
+    ]
+
+    resources = [
+      "arn:aws:s3:::chsn-runners-web-*",
+    ]
+  }
+
 }
 
 resource "aws_iam_policy" "github_actions" {
