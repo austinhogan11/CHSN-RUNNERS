@@ -148,6 +148,25 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "arn:aws:s3:::chsn-runners-web-*/*",
     ]
   }
+
+  statement {
+    sid = "RunnerApiEcr"
+
+    actions = [
+      "ecr:GetAuthorizationToken",
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:BatchGetImage",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:PutImage",
+    ]
+
+    resources = [
+      "*",
+    ]
+  }
 }
 
 resource "aws_iam_policy" "github_actions" {
