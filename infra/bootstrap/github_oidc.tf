@@ -92,6 +92,7 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "s3:GetBucketVersioning",
       "s3:GetBucketWebsite",
       "s3:GetLifecycleConfiguration",
+      "s3:GetReplicationConfiguration",
       "s3:ListBucket",
       "s3:PutBucketPublicAccessBlock",
       "s3:PutBucketTagging",
