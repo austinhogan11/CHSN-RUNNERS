@@ -128,9 +128,25 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       # Terraform/AWS tagging
       "cloudfront:TagResource",
       "cloudfront:UntagResource",
+
+      "cloudfront:CreateInvalidation",
     ]
 
     resources = ["*"]
+  }
+
+  statement {
+    sid = "RunnerWebObjects"
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+    ]
+
+    resources = [
+      "arn:aws:s3:::chsn-runners-web-*/*",
+    ]
   }
 }
 

@@ -32,7 +32,7 @@ function App() {
 
   return (
     <main>
-      <h1>CHSN-RUNNERS</h1>
+      <h1>CHSN-RUNNERS V2</h1>
 
       {error && <p>{error}</p>}
 
