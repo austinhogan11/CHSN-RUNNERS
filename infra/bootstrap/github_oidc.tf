@@ -92,6 +92,46 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "arn:aws:s3:::chsn-runners-web-*",
     ]
   }
+
+  statement {
+    sid = "RunnerWebBucketPolicy"
+
+    actions = [
+      "s3:GetBucketPolicy",
+      "s3:PutBucketPolicy",
+      "s3:DeleteBucketPolicy",
+    ]
+
+    resources = [
+      "arn:aws:s3:::chsn-runners-web-*",
+    ]
+  }
+
+  statement {
+    sid = "RunnerCloudFront"
+
+    actions = [
+      # Read/refresh operations
+      "cloudfront:Get*",
+      "cloudfront:List*",
+
+      # Distribution lifecycle
+      "cloudfront:CreateDistribution",
+      "cloudfront:UpdateDistribution",
+      "cloudfront:DeleteDistribution",
+
+      # Origin Access Control lifecycle
+      "cloudfront:CreateOriginAccessControl",
+      "cloudfront:UpdateOriginAccessControl",
+      "cloudfront:DeleteOriginAccessControl",
+
+      # Terraform/AWS tagging
+      "cloudfront:TagResource",
+      "cloudfront:UntagResource",
+    ]
+
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "github_actions" {
