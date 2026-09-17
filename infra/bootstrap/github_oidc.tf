@@ -77,30 +77,13 @@ data "aws_iam_policy_document" "github_actions_permissions" {
     sid = "RunnerWebBucket"
 
     actions = [
-      # Create/delete the Runner bucket
-      "s3:CreateBucket",
-      "s3:DeleteBucket",
-
-      # Terraform refresh/read permissions
-      "s3:GetAccelerateConfiguration",
-      "s3:GetBucketAcl",
-      "s3:GetBucketCORS",
-      "s3:GetBucketLocation",
-      "s3:GetBucketLogging",
-      "s3:GetBucketNotification",
-      "s3:GetBucketPolicy",
-      "s3:GetBucketPolicyStatus",
-      "s3:GetBucketPublicAccessBlock",
-      "s3:GetBucketRequestPayment",
-      "s3:GetBucketTagging",
-      "s3:GetBucketVersioning",
-      "s3:GetBucketWebsite",
-      "s3:GetEncryptionConfiguration",
-      "s3:GetLifecycleConfiguration",
-      "s3:GetReplicationConfiguration",
+      # Terraform refresh/read access for this project's web bucket.
+      "s3:Get*",
       "s3:ListBucket",
 
-      # Current managed configuration
+      # Current Terraform-managed writes.
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
       "s3:PutBucketPublicAccessBlock",
       "s3:PutBucketTagging",
     ]
@@ -109,7 +92,6 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "arn:aws:s3:::chsn-runners-web-*",
     ]
   }
-
 }
 
 resource "aws_iam_policy" "github_actions" {
