@@ -79,6 +79,7 @@ data "aws_iam_policy_document" "github_actions_permissions" {
     actions = [
       "s3:CreateBucket",
       "s3:DeleteBucket",
+      "s3:GetAccelerateConfiguration",
       "s3:GetBucketAcl",
       "s3:GetBucketCORS",
       "s3:GetBucketLocation",
@@ -90,6 +91,7 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "s3:GetBucketTagging",
       "s3:GetBucketVersioning",
       "s3:GetBucketWebsite",
+      "s3:ListBucket",
       "s3:PutBucketPublicAccessBlock",
       "s3:PutBucketTagging",
     ]
