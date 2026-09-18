@@ -24,6 +24,24 @@ resource "aws_apigatewayv2_stage" "default" {
 
   name        = "$default"
   auto_deploy = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gateway.arn
+
+    format = jsonencode({
+      requestId          = "$context.requestId"
+      requestTime        = "$context.requestTime"
+      httpMethod         = "$context.httpMethod"
+      path               = "$context.path"
+      routeKey           = "$context.routeKey"
+      status             = "$context.status"
+      responseLength     = "$context.responseLength"
+      responseLatency    = "$context.responseLatency"
+      integrationLatency = "$context.integrationLatency"
+      sourceIp           = "$context.identity.sourceIp"
+      userAgent          = "$context.identity.userAgent"
+    })
+  }
 }
 
 resource "aws_lambda_permission" "api_gateway" {
@@ -33,4 +51,9 @@ resource "aws_lambda_permission" "api_gateway" {
   principal     = "apigateway.amazonaws.com"
 
   source_arn = "${aws_apigatewayv2_api.api.execution_arn}/*"
+}
+
+resource "aws_cloudwatch_log_group" "api_gateway" {
+  name              = "/aws/apigateway/chsn-runners-api"
+  retention_in_days = 14
 }
