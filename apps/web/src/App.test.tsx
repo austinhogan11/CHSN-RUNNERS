@@ -35,13 +35,25 @@ const weekResponse = {
   ],
 };
 
+const trendResponse = [
+  {
+    week_start: "2026-09-07",
+    planned_distance: 0,
+    actual_distance: 0,
+  },
+  {
+    week_start: "2026-09-14",
+    planned_distance: 30,
+    actual_distance: 5.1,
+  },
+];
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-
 describe("App", () => {
-  it("shows loading state while workouts are being fetched", () => {
+  it("shows loading state while dashboard data is being fetched", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => {})),
@@ -50,25 +62,34 @@ describe("App", () => {
     render(<App />);
 
     expect(
-      screen.getByText("Loading workouts..."),
+      screen.getByText("Loading dashboard..."),
     ).toBeInTheDocument();
   });
 
-
-  it("shows the current week and workouts", async () => {
+  it("shows the mileage trend and current week", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => weekResponse,
-      }),
+      vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => weekResponse,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => trendResponse,
+        }),
     );
 
     render(<App />);
 
     expect(
-      await screen.findByText("This Week"),
+      await screen.findByText("Weekly Mileage Trend"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("This Week"),
     ).toBeInTheDocument();
 
     expect(
@@ -84,16 +105,15 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("Actual: 5.10 mi"),
-    ).toBeInTheDocument();
+  screen.getAllByText("Actual: 5.10 mi"),
+).toHaveLength(2);
 
     expect(
       screen.getByText("Pace: 8:02 /mi"),
     ).toBeInTheDocument();
   });
 
-
-  it("shows an error when workouts cannot be loaded", async () => {
+  it("shows an error when dashboard data cannot be loaded", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockRejectedValue(new Error("API unavailable")),
@@ -103,7 +123,7 @@ describe("App", () => {
 
     expect(
       await screen.findByText(
-        "Unable to load this week's workouts.",
+        "Unable to load runner dashboard.",
       ),
     ).toBeInTheDocument();
   });
