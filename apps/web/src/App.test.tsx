@@ -102,6 +102,8 @@ describe("App", () => {
     const plannedRun = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
     expect(plannedRun.getAllByText("Planned")).toHaveLength(2);
     expect(plannedRun.getAllByText("—")).toHaveLength(2);
+    expect(screen.getAllByRole("article")).toHaveLength(7);
+    expect(screen.getAllByRole("heading", { name: "Rest" })).toHaveLength(5);
 
     const summary = within(screen.getByRole("region", { name: "This Week" }));
     expect(summary.getByText("30.00 mi")).toBeInTheDocument();
@@ -132,9 +134,8 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(
-      await screen.findByText("No workouts planned this week"),
-    ).toBeInTheDocument();
+    expect(await screen.findAllByRole("heading", { name: "Rest" })).toHaveLength(7);
+    expect(screen.getAllByRole("article")).toHaveLength(7);
     expect(
       screen.getByRole("heading", { name: "Weekly Mileage Trend" }),
     ).toBeInTheDocument();

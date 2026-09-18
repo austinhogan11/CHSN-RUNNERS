@@ -10,7 +10,6 @@ export function WeekSummary({ summary }: WeekSummaryProps) {
   return (
     <section className="panel week-summary" aria-labelledby="week-heading">
       <div>
-        <p className="eyebrow">Your weekly snapshot</p>
         <h2 id="week-heading">This Week</h2>
         <p className="section-note">Week of <time dateTime={summary.week_start}>{formatCalendarDate(summary.week_start, { month: "short", day: "numeric", year: "numeric" })}</time></p>
       </div>

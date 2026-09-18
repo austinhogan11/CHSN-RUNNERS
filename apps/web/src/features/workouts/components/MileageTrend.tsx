@@ -42,10 +42,7 @@ export function MileageTrend({ points }: MileageTrendProps) {
   return (
     <section className="panel trend-panel" aria-labelledby={`${id}-heading`}>
       <div className="section-heading">
-        <div>
-          <p className="eyebrow">The long view</p>
-          <h2 id={`${id}-heading`}>Weekly Mileage Trend</h2>
-        </div>
+        <h2 id={`${id}-heading`}>Weekly Mileage Trend</h2>
         <span className="section-note">Last {points.length} weeks · miles</span>
       </div>
 

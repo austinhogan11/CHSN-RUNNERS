@@ -55,24 +55,15 @@ function App() {
       <header className="dashboard-header">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">R</span>
-          <span>Runner</span>
+          <h1>Runner</h1>
         </div>
-        <span className="header-note">Your training, in focus.</span>
       </header>
-
-      <div className="dashboard-intro">
-        <div>
-          <p className="eyebrow">Training overview</p>
-          <h1>Make every mile count.</h1>
-        </div>
-        <p>Your week. Your workouts. Your progress.</p>
-      </div>
 
       <MileageTrend points={trend} />
 
       <WeekSummary summary={week} />
 
-      <WorkoutList workouts={week.workouts} />
+      <WorkoutList weekStart={week.week_start} workouts={week.workouts} />
     </main>
   );
 }

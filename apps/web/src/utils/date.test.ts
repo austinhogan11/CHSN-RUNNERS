@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { formatCalendarDate, formatLocalDate } from "./date";
+import { formatCalendarDate, formatLocalDate, getWeekDates } from "./date";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -10,6 +10,20 @@ describe("formatCalendarDate", () => {
   it.each(["America/New_York", "Asia/Tokyo"])("preserves a date-only API value in %s", (timezone) => {
     vi.stubEnv("TZ", timezone);
     expect(formatCalendarDate("2026-09-14", { weekday: "short", month: "short", day: "numeric" })).toBe("Mon, Sep 14");
+  });
+});
+
+describe("getWeekDates", () => {
+  it("returns Monday through Sunday across month boundaries", () => {
+    expect(getWeekDates("2026-08-31")).toEqual([
+      "2026-08-31",
+      "2026-09-01",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04",
+      "2026-09-05",
+      "2026-09-06",
+    ]);
   });
 });
 
