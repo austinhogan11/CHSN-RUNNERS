@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 
 from runner_api.config import settings
 from runner_api.models.system import StatusResponse, VersionResponse
+from runner_api.routes.trends import router as trends_router
 from runner_api.routes.workouts import router as workouts_router
 
 logger = logging.getLogger("runner_api")
@@ -14,6 +15,7 @@ logger.setLevel(logging.INFO)
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)
 app.include_router(workouts_router)
+app.include_router(trends_router)
 
 
 @app.middleware("http")
