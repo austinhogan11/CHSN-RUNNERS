@@ -164,6 +164,7 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "ecr:DescribeRepositories",
       "ecr:DescribeImages",
       "ecr:ListImages",
+      "ecr:ListTagsForResource",
     ]
 
     resources = [
