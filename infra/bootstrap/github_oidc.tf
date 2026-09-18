@@ -111,28 +111,30 @@ data "aws_iam_policy_document" "github_actions_permissions" {
     sid = "RunnerCloudFront"
 
     actions = [
-      # Read/refresh operations
+      # Read/refresh operations.
       "cloudfront:Get*",
       "cloudfront:List*",
 
-      # Distribution lifecycle
+      # Distribution lifecycle.
       "cloudfront:CreateDistribution",
       "cloudfront:UpdateDistribution",
       "cloudfront:DeleteDistribution",
 
-      # Origin Access Control lifecycle
+      # Origin Access Control lifecycle.
       "cloudfront:CreateOriginAccessControl",
       "cloudfront:UpdateOriginAccessControl",
       "cloudfront:DeleteOriginAccessControl",
 
-      # Terraform/AWS tagging
+      # Terraform/AWS tagging.
       "cloudfront:TagResource",
       "cloudfront:UntagResource",
 
       "cloudfront:CreateInvalidation",
     ]
 
-    resources = ["*"]
+    resources = [
+      "*",
+    ]
   }
 
   statement {
@@ -181,7 +183,6 @@ data "aws_iam_policy_document" "github_actions_permissions" {
     actions = [
       "logs:CreateLogGroup",
       "logs:DeleteLogGroup",
-      "logs:DescribeLogGroups",
       "logs:ListTagsForResource",
       "logs:PutRetentionPolicy",
       "logs:TagResource",
@@ -191,6 +192,25 @@ data "aws_iam_policy_document" "github_actions_permissions" {
     resources = [
       "arn:aws:logs:us-east-1:537690166345:log-group:/aws/apigateway/chsn-runners-api",
       "arn:aws:logs:us-east-1:537690166345:log-group:/aws/apigateway/chsn-runners-api:*",
+    ]
+  }
+
+  statement {
+    sid = "RunnerApiLogDelivery"
+
+    actions = [
+      "logs:CreateLogDelivery",
+      "logs:DeleteLogDelivery",
+      "logs:DescribeLogGroups",
+      "logs:DescribeResourcePolicies",
+      "logs:GetLogDelivery",
+      "logs:ListLogDeliveries",
+      "logs:PutResourcePolicy",
+      "logs:UpdateLogDelivery",
+    ]
+
+    resources = [
+      "*",
     ]
   }
 
