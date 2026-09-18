@@ -77,10 +77,28 @@ jobs:
       - name: Smoke test API
         shell: bash
         run: |
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --retry 5 \
-            --retry-delay 3 \
-            "https://${CLOUDFRONT_DOMAIN}/api/health"
+            set -euo pipefail
+
+            HEALTH="$(
+            curl \
+                --fail \
+                --silent \
+                --show-error \
+                --retry 5 \
+                --retry-delay 3 \
+                "https://${CLOUDFRONT_DOMAIN}/api/health"
+            )"
+
+            VERSION="$(
+            curl \
+                --fail \
+                --silent \
+                --show-error \
+                --retry 5 \
+                --retry-delay 3 \
+                "https://${CLOUDFRONT_DOMAIN}/api/version"
+            )"
+
+            test "$(echo "$HEALTH" | jq -r '.status')" = "ok"
+            test "$(echo "$VERSION" | jq -r '.environment')" = "production"
+            test -n "$(echo "$VERSION" | jq -r '.version')"
