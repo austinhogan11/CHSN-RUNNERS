@@ -167,6 +167,39 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "*",
     ]
   }
+
+  statement {
+    sid = "RunnerApiGateway"
+
+    actions = [
+      "apigateway:*",
+    ]
+
+    resources = [
+      "*",
+    ]
+  }
+
+  statement {
+    sid = "RunnerApiLambda"
+
+    actions = [
+      "lambda:Get*",
+      "lambda:List*",
+      "lambda:CreateFunction",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:DeleteFunction",
+      "lambda:AddPermission",
+      "lambda:RemovePermission",
+      "lambda:TagResource",
+      "lambda:UntagResource",
+    ]
+
+    resources = [
+      "arn:aws:lambda:us-east-1:537690166345:function:chsn-runners-api",
+    ]
+  }
 }
 
 resource "aws_iam_policy" "github_actions" {
