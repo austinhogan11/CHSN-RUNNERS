@@ -1,0 +1,22 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+COPY pyproject.toml uv.lock ./
+
+RUN pip install --no-cache-dir uv \
+    && uv export \
+        --frozen \
+        --no-dev \
+        --no-editable \
+        --no-hashes \
+        --no-emit-project \
+        -o requirements.txt \
+    && pip install \
+        --no-cache-dir \
+        --root-user-action=ignore \
+        --disable-pip-version-check \
+        -r requirements.txt \
+        --target "${LAMBDA_TASK_ROOT}"
+
+COPY src/runner_api "${LAMBDA_TASK_ROOT}/runner_api"
+
+CMD ["runner_api.lambda_handler.handler"]
