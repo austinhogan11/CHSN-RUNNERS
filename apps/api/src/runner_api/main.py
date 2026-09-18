@@ -16,7 +16,23 @@ app = FastAPI(title=settings.app_name, version=settings.app_version)
 
 @app.middleware("http")
 async def log_request(request: Request, call_next):
-    request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
+    event = request.scope.get("aws.event", {})
+    context = request.scope.get("aws.context")
+
+    gateway_request_id = None
+    if isinstance(event, dict):
+        request_context = event.get("requestContext", {})
+        if isinstance(request_context, dict):
+            gateway_request_id = request_context.get("requestId")
+
+    lambda_request_id = (
+        getattr(context, "aws_request_id", None) if context is not None else None
+    )
+
+    request_id = (
+        gateway_request_id or request.headers.get("x-request-id") or str(uuid.uuid4())
+    )
+
     started_at = time.perf_counter()
 
     try:
@@ -29,6 +45,8 @@ async def log_request(request: Request, call_next):
                 {
                     "event": "http_request",
                     "request_id": request_id,
+                    "gateway_request_id": gateway_request_id,
+                    "lambda_request_id": lambda_request_id,
                     "method": request.method,
                     "path": request.url.path,
                     "status": 500,
@@ -45,6 +63,8 @@ async def log_request(request: Request, call_next):
             {
                 "event": "http_request",
                 "request_id": request_id,
+                "gateway_request_id": gateway_request_id,
+                "lambda_request_id": lambda_request_id,
                 "method": request.method,
                 "path": request.url.path,
                 "status": response.status_code,
