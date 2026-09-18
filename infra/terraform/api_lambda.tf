@@ -56,6 +56,7 @@ resource "aws_lambda_function" "api" {
 
   depends_on = [
     aws_iam_role_policy_attachment.api_lambda_basic_execution,
+    aws_cloudwatch_log_group.api_lambda,
   ]
 
   lifecycle {
@@ -63,6 +64,8 @@ resource "aws_lambda_function" "api" {
       image_uri,
     ]
   }
+
+
 }
 
 resource "aws_ecr_lifecycle_policy" "api" {
@@ -102,4 +105,9 @@ resource "aws_ecr_lifecycle_policy" "api" {
       }
     ]
   })
+}
+
+resource "aws_cloudwatch_log_group" "api_lambda" {
+  name              = "/aws/lambda/chsn-runners-api"
+  retention_in_days = 7
 }
