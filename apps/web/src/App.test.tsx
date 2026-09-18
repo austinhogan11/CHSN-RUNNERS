@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -95,25 +95,18 @@ describe("App", () => {
       screen.getByText("This Week"),
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByText("Easy Run"),
-    ).toBeInTheDocument();
+    const run = within(screen.getByRole("article", { name: "Easy Run on 2026-09-14" }));
+    for (const value of ["Easy Run", "Keep it relaxed", "Mon", "Sep 14", "5.00 mi", "5.10 mi", "8:02 /mi", "Completed"]) {
+      expect(run.getByText(value)).toBeInTheDocument();
+    }
+    const plannedRun = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
+    expect(plannedRun.getAllByText("Planned")).toHaveLength(2);
+    expect(plannedRun.getAllByText("—")).toHaveLength(2);
 
-    expect(
-      screen.getByText("Keep it relaxed"),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText("Planned: 5.00 mi"),
-    ).toBeInTheDocument();
-
-    expect(
-  screen.getAllByText("Actual: 5.10 mi"),
-).toHaveLength(2);
-
-    expect(
-      screen.getByText("Pace: 8:02 /mi"),
-    ).toBeInTheDocument();
+    const summary = within(screen.getByRole("region", { name: "This Week" }));
+    expect(summary.getByText("30.00 mi")).toBeInTheDocument();
+    expect(summary.getByText("5.10 mi")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Planned and actual weekly mileage/ })).toBeInTheDocument();
   });
 
   it("renders an empty week while keeping the mileage trend visible", async () => {
@@ -145,9 +138,11 @@ describe("App", () => {
     expect(
       screen.getByRole("heading", { name: "Weekly Mileage Trend" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Planned: 30.00 mi")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Planned and actual weekly mileage/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByText("View weekly data"));
+    expect(within(screen.getByRole("table")).getByText("30.00 mi")).toBeInTheDocument();
 
-    const summary = screen.getByRole("heading", { name: "This Week" }).parentElement!;
+    const summary = screen.getByRole("region", { name: "This Week" });
     expect(within(summary).getAllByText("0.00 mi")).toHaveLength(2);
     expect(screen.queryByText("Easy Run")).not.toBeInTheDocument();
     expect(

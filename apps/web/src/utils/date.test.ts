@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { formatLocalDate } from "./date";
+import { formatCalendarDate, formatLocalDate } from "./date";
 
 afterEach(() => {
   vi.unstubAllEnvs();
+});
+
+describe("formatCalendarDate", () => {
+  it.each(["America/New_York", "Asia/Tokyo"])("preserves a date-only API value in %s", (timezone) => {
+    vi.stubEnv("TZ", timezone);
+    expect(formatCalendarDate("2026-09-14", { weekday: "short", month: "short", day: "numeric" })).toBe("Mon, Sep 14");
+  });
 });
 
 describe("formatLocalDate", () => {

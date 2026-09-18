@@ -5,3 +5,9 @@ export function formatLocalDate(date: Date): string {
 
   return `${year}-${month}-${day}`;
 }
+
+export function formatCalendarDate(day: string, options: Intl.DateTimeFormatOptions): string {
+  // A date-only API value is a calendar day, not a UTC timestamp.
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(year, month - 1, date).toLocaleDateString("en-US", options);
+}
