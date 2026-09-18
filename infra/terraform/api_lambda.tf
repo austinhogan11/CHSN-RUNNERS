@@ -39,7 +39,7 @@ resource "aws_lambda_function" "api" {
   role          = aws_iam_role.api_lambda.arn
 
   package_type = "Image"
-  image_uri    = "${aws_ecr_repository.api.repository_url}:latest"
+  image_uri    = "${aws_ecr_repository.api.repository_url}:bootstrap"
 
   architectures = [
     "arm64",
@@ -57,4 +57,10 @@ resource "aws_lambda_function" "api" {
   depends_on = [
     aws_iam_role_policy_attachment.api_lambda_basic_execution,
   ]
+
+  lifecycle {
+    ignore_changes = [
+      image_uri,
+    ]
+  }
 }
