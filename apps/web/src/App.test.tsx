@@ -49,8 +49,10 @@ const trendResponse = [
 ];
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("App", () => {
@@ -151,6 +153,35 @@ describe("App", () => {
     expect(
       screen.queryByText("Unable to load runner dashboard."),
     ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["2026-09-21T03:59:59Z", "2026-09-20"],
+    ["2026-09-21T04:00:00Z", "2026-09-21"],
+  ])("requests both dashboard endpoints for the local day at %s", async (now, day) => {
+    vi.stubEnv("TZ", "America/New_York");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(now));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => weekResponse,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => trendResponse,
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "This Week" }),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/weeks/${day}`);
+    expect(fetchMock).toHaveBeenCalledWith(`/api/trends/mileage?end=${day}&weeks=12`);
   });
 
   it("shows an error when dashboard data cannot be loaded", async () => {

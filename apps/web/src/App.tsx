@@ -8,6 +8,7 @@ import type {
   MileageTrendPoint,
   WeekSummary as WeekSummaryData,
 } from "./features/workouts/types";
+import { formatLocalDate } from "./utils/date";
 
 function App() {
   const [week, setWeek] = useState<WeekSummaryData | null>(null);
@@ -15,7 +16,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatLocalDate(new Date());
 
     Promise.all([
       getWeek(today),
