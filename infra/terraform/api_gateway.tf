@@ -42,6 +42,10 @@ resource "aws_apigatewayv2_stage" "default" {
       userAgent          = "$context.identity.userAgent"
     })
   }
+  default_route_settings {
+    throttling_burst_limit = 50
+    throttling_rate_limit  = 25
+  }
 }
 
 resource "aws_lambda_permission" "api_gateway" {
@@ -55,5 +59,5 @@ resource "aws_lambda_permission" "api_gateway" {
 
 resource "aws_cloudwatch_log_group" "api_gateway" {
   name              = "/aws/apigateway/chsn-runners-api"
-  retention_in_days = 14
+  retention_in_days = 7
 }
