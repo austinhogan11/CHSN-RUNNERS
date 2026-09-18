@@ -165,10 +165,32 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "ecr:DescribeImages",
       "ecr:ListImages",
       "ecr:ListTagsForResource",
+      "ecr:GetLifecyclePolicy",
+      "ecr:PutLifecyclePolicy",
+      "ecr:DeleteLifecyclePolicy",
     ]
 
     resources = [
       "*",
+    ]
+  }
+
+  statement {
+    sid = "RunnerApiLogs"
+
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:DescribeLogGroups",
+      "logs:ListTagsForResource",
+      "logs:PutRetentionPolicy",
+      "logs:TagResource",
+      "logs:UntagResource",
+    ]
+
+    resources = [
+      "arn:aws:logs:us-east-1:537690166345:log-group:/aws/apigateway/chsn-runners-api",
+      "arn:aws:logs:us-east-1:537690166345:log-group:/aws/apigateway/chsn-runners-api:*",
     ]
   }
 
