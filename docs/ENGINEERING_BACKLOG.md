@@ -22,6 +22,42 @@ The project should continue to follow:
 
 ---
 
+## Status at a Glance
+
+The detailed sections below remain the source of scope and acceptance criteria.
+
+| ID | Priority | Item | Status |
+| --- | --- | --- | --- |
+| ENG-001 | P0 | Support Empty Training Weeks | ✅ Done |
+| ENG-002 | P0 | Use Runner Local Calendar Date | ✅ Done |
+| ENG-003 | P1 | Define Workout Domain Invariants | ⏳ Pending |
+| ENG-004 | P1 | Add Authentication and Workout Ownership | ⏳ Pending |
+| ENG-005 | P1 | Separate PR Planning Authority From Production AWS Mutation | ⏳ Pending |
+| ENG-006 | P1 | Make Infrastructure Bootstrap/Recreation Reproducible | ⏳ Pending |
+| ENG-007 | P2 | Preserve `/api` Routing Context in Generated URLs | ⏳ Pending |
+| ENG-008 | P2 | Preserve Request Correlation on Errors | ⏳ Pending |
+| ENG-009 | P2 | Namespace Application Environment Variables | ⏳ Pending |
+| ENG-010 | P2 | Validate the Production Lambda Artifact in CI | ⏳ Pending |
+| ENG-011 | P2 | Verify the Deployed Revision | ⏳ Pending |
+| ENG-012 | P2 | Add Workout Production Smoke Check | ⏳ Pending |
+| ENG-013 | P2 | Align CI and Deployment Runtime Versions | ⏳ Pending |
+| ENG-014 | P2 | Validate Both Terraform Roots | ⏳ Pending |
+| ENG-015 | P2 | Make Web Asset Deployment Non-Destructive | ⏳ Pending |
+| ENG-016 | P2 | Coordinate Production Workflow Concurrency | ⏳ Pending |
+| ENG-017 | P2 | Strengthen Lambda Artifact Immutability / Rollback | ⏳ Pending |
+| ENG-018 | P2 | Consolidate Weekly Aggregation Logic | ⏳ Pending |
+| ENG-019 | P2 | Centralize Frontend API Error Handling | ⏳ Pending |
+| ENG-020 | P3 | Guard Extreme Date Arithmetic | ⏳ Pending |
+| ENG-021 | P3 | Repair Repository Documentation | ⏳ Pending |
+| ENG-022 | P3 | Ignore Terraform Local Variable and Plan Artifacts | ⏳ Pending |
+| ENG-023 | P3 | Improve Local Development Process Supervision | ⏳ Pending |
+| ENG-024 | P3 | Remove Template / Scaffold Residue | ⏳ Pending |
+| ENG-025 | P3 | Add Basic AWS Cost Notification | ⏳ Pending |
+| ENG-026 | P3 | Add Browser Security Headers | ⏳ Pending |
+| ENG-027 | P3 | Add SPA Routing Support When Routes Exist | ⏳ Pending |
+
+---
+
 # Priority Definitions
 
 ## P0 — Fix Now
@@ -56,6 +92,10 @@ Address when nearby code is already being changed or when the associated feature
 # P0 — Fix Now
 
 ## ENG-001 — Support Empty Training Weeks
+
+**Status:** ✅ Done — completed on `feat/workout-dashboard` in `057a5af`.
+Empty weeks return HTTP 200 with derived zero totals; the dashboard preserves
+the mileage trend and shows an intentional empty state, with regression tests.
 
 **Category:** Product correctness  
 **Timing:** Now  
@@ -100,6 +140,10 @@ An existing calendar week with no workouts should return:
 ---
 
 ## ENG-002 — Use Runner Local Calendar Date
+
+**Status:** ✅ Done — completed on `feat/workout-dashboard` in `6f1858c`.
+Dashboard requests use a dependency-free local calendar date helper, with
+formatting and timezone-boundary regression tests.
 
 **Category:** Product correctness  
 **Timing:** Now  
