@@ -1,52 +1,41 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
-import {
-  getHealth,
-  getVersion,
-  type HealthResponse,
-  type VersionResponse,
-} from "./api/system"
+import { getWeek } from "./features/workouts/api";
+import { WeekSummary } from "./features/workouts/components/WeekSummary";
+import { WorkoutList } from "./features/workouts/components/WorkoutList";
+import type { WeekSummary as WeekSummaryData } from "./features/workouts/types";
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-  const [version, setVersion] = useState<VersionResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [week, setWeek] = useState<WeekSummaryData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadSystemStatus() {
-      try {
-        const [healthResponse, versionResponse] = await Promise.all([
-          getHealth(),
-          getVersion(),
-        ])
+    const today = new Date().toISOString().slice(0, 10);
 
-        setHealth(healthResponse)
-        setVersion(versionResponse)
-      } catch {
-        setError("Unable to connect to the API")
-      }
-    }
+    getWeek(today)
+      .then(setWeek)
+      .catch(() => {
+        setError("Unable to load this week's workouts.");
+      });
+  }, []);
 
-    void loadSystemStatus()
-  }, [])
+  if (error) {
+    return <main>{error}</main>;
+  }
+
+  if (!week) {
+    return <main>Loading workouts...</main>;
+  }
 
   return (
     <main>
-      <h1>CHSN-RUNNERS V2</h1>
+      <h1>Runner</h1>
 
-      {error && <p>{error}</p>}
+      <WeekSummary summary={week} />
 
-      {!error && (!health || !version) && <p>Loading system status...</p>}
-
-      {health && version && (
-        <section>
-          <p>API Status: {health.status}</p>
-          <p>Version: {version.version}</p>
-          <p>Environment: {version.environment}</p>
-        </section>
-      )}
+      <WorkoutList workouts={week.workouts} />
     </main>
-  )
+  );
 }
 
-export default App
+export default App;
