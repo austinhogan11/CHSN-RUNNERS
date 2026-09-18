@@ -161,6 +161,9 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "ecr:UploadLayerPart",
       "ecr:CompleteLayerUpload",
       "ecr:PutImage",
+      "ecr:DescribeRepositories",
+      "ecr:DescribeImages",
+      "ecr:ListImages",
     ]
 
     resources = [
@@ -198,6 +201,20 @@ data "aws_iam_policy_document" "github_actions_permissions" {
 
     resources = [
       "arn:aws:lambda:us-east-1:537690166345:function:chsn-runners-api",
+    ]
+  }
+
+  statement {
+    sid = "RunnerApiLambdaRoleRead"
+
+    actions = [
+      "iam:GetRole",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListRolePolicies",
+    ]
+
+    resources = [
+      "arn:aws:iam::537690166345:role/chsn-runners-api-lambda",
     ]
   }
 }
