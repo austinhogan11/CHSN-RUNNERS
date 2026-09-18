@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -50,6 +50,7 @@ const trendResponse = [
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("App", () => {
@@ -111,6 +112,45 @@ describe("App", () => {
     expect(
       screen.getByText("Pace: 8:02 /mi"),
     ).toBeInTheDocument();
+  });
+
+  it("renders an empty week while keeping the mileage trend visible", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            week_start: "2026-10-05",
+            planned_distance: 0,
+            actual_distance: 0,
+            workouts: [],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => trendResponse,
+        }),
+    );
+
+    render(<App />);
+
+    expect(
+      await screen.findByText("No workouts planned this week"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Weekly Mileage Trend" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Planned: 30.00 mi")).toBeInTheDocument();
+
+    const summary = screen.getByRole("heading", { name: "This Week" }).parentElement!;
+    expect(within(summary).getAllByText("0.00 mi")).toHaveLength(2);
+    expect(screen.queryByText("Easy Run")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Unable to load runner dashboard."),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an error when dashboard data cannot be loaded", async () => {

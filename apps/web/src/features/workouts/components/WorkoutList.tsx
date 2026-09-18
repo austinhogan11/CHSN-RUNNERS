@@ -10,6 +10,8 @@ export function WorkoutList({ workouts }: WorkoutListProps) {
     <section>
       <h2>Workouts</h2>
 
+      {workouts.length === 0 && <p>No workouts planned this week</p>}
+
       <div>
         {workouts.map((workout) => (
           <article key={workout.id}>
