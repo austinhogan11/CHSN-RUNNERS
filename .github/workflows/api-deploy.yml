@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
-          IMAGE_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${GITHUB_SHA}"
+          IMAGE_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:deploy-${GITHUB_SHA}"
 
           echo "uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
 
