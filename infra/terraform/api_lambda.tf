@@ -64,3 +64,42 @@ resource "aws_lambda_function" "api" {
     ]
   }
 }
+
+resource "aws_ecr_lifecycle_policy" "api" {
+  repository = aws_ecr_repository.api.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep the 30 most recent API deployment images"
+
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["deploy-"]
+          countType     = "imageCountMoreThan"
+          countNumber   = 30
+        }
+
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Remove untagged API images after 7 days"
+
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 7
+        }
+
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
