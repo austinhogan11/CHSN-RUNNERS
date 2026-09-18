@@ -181,7 +181,6 @@ data "aws_iam_policy_document" "github_actions_permissions" {
     actions = [
       "logs:CreateLogGroup",
       "logs:DeleteLogGroup",
-      "logs:DescribeLogGroups",
       "logs:ListTagsForResource",
       "logs:PutRetentionPolicy",
       "logs:TagResource",
@@ -191,6 +190,17 @@ data "aws_iam_policy_document" "github_actions_permissions" {
     resources = [
       "arn:aws:logs:us-east-1:537690166345:log-group:/aws/apigateway/chsn-runners-api",
       "arn:aws:logs:us-east-1:537690166345:log-group:/aws/apigateway/chsn-runners-api:*",
+    ]
+  }
+  statement {
+    sid = "RunnerApiLogsRead"
+
+    actions = [
+      "logs:DescribeLogGroups",
+    ]
+
+    resources = [
+      "*",
     ]
   }
 
