@@ -1,0 +1,30 @@
+export type WorkoutStatus = "planned" | "completed" | "skipped";
+
+export interface Workout {
+  id: string;
+  date: string;
+  title: string;
+  description: string | null;
+
+  planned_distance: number;
+
+  start_time: string | null;
+  duration_seconds: number | null;
+  distance: number | null;
+  avg_pace_seconds: number | null;
+
+  status: WorkoutStatus;
+}
+
+export interface WeekSummary {
+  week_start: string;
+  planned_distance: number;
+  actual_distance: number;
+  workouts: Workout[];
+}
+
+export interface MileageTrendPoint {
+  week_start: string;
+  planned_distance: number;
+  actual_distance: number;
+}

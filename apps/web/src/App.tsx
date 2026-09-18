@@ -1,52 +1,71 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
-import {
-  getHealth,
-  getVersion,
-  type HealthResponse,
-  type VersionResponse,
-} from "./api/system"
+import { getMileageTrend, getWeek } from "./features/workouts/api";
+import { MileageTrend } from "./features/workouts/components/MileageTrend";
+import { WeekSummary } from "./features/workouts/components/WeekSummary";
+import { WorkoutList } from "./features/workouts/components/WorkoutList";
+import type {
+  MileageTrendPoint,
+  WeekSummary as WeekSummaryData,
+} from "./features/workouts/types";
+import { formatLocalDate } from "./utils/date";
+import "./App.css";
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-  const [version, setVersion] = useState<VersionResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [week, setWeek] = useState<WeekSummaryData | null>(null);
+  const [trend, setTrend] = useState<MileageTrendPoint[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadSystemStatus() {
-      try {
-        const [healthResponse, versionResponse] = await Promise.all([
-          getHealth(),
-          getVersion(),
-        ])
+    const today = formatLocalDate(new Date());
 
-        setHealth(healthResponse)
-        setVersion(versionResponse)
-      } catch {
-        setError("Unable to connect to the API")
-      }
-    }
+    Promise.all([
+      getWeek(today),
+      getMileageTrend(today),
+    ])
+      .then(([weekData, trendData]) => {
+        setWeek(weekData);
+        setTrend(trendData);
+      })
+      .catch(() => {
+        setError("Unable to load runner dashboard.");
+      });
+  }, []);
 
-    void loadSystemStatus()
-  }, [])
+  if (error) {
+    return (
+      <main className="dashboard">
+        <h1>Runner</h1>
+        <p className="panel page-message" role="alert">{error}</p>
+      </main>
+    );
+  }
+
+  if (!week || !trend) {
+    return (
+      <main className="dashboard">
+        <h1>Runner</h1>
+        <p className="panel page-message" role="status">Loading dashboard...</p>
+      </main>
+    );
+  }
 
   return (
-    <main>
-      <h1>CHSN-RUNNERS V2</h1>
+    <main className="dashboard">
+      <header className="dashboard-header">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">R</span>
+          <h1>Runner</h1>
+        </div>
+      </header>
 
-      {error && <p>{error}</p>}
+      <MileageTrend points={trend} />
 
-      {!error && (!health || !version) && <p>Loading system status...</p>}
+      <WeekSummary summary={week} />
 
-      {health && version && (
-        <section>
-          <p>API Status: {health.status}</p>
-          <p>Version: {version.version}</p>
-          <p>Environment: {version.environment}</p>
-        </section>
-      )}
+      <WorkoutList weekStart={week.week_start} workouts={week.workouts} />
     </main>
-  )
+  );
 }
 
-export default App
+export default App;

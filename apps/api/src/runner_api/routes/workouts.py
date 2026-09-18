@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from runner_api.data.workouts import WORKOUTS
 from runner_api.models.workout import WeekSummary, WorkoutStatus
@@ -20,12 +20,6 @@ def get_week(day: date) -> WeekSummary:
     workouts = [
         workout for workout in WORKOUTS if week_start <= workout.date <= week_end
     ]
-
-    if not workouts:
-        raise HTTPException(
-            status_code=404,
-            detail="No workouts found for this week",
-        )
 
     planned_distance = sum(workout.planned_distance for workout in workouts)
 

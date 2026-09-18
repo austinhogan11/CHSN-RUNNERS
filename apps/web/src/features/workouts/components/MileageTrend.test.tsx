@@ -1,0 +1,92 @@
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { MileageTrend } from "./MileageTrend";
+import type { MileageTrendPoint } from "../types";
+
+const points: MileageTrendPoint[] = Array.from({ length: 12 }, (_, index) => {
+  const week = new Date(Date.UTC(2026, 5, 29 + index * 7));
+  return {
+    week_start: week.toISOString().slice(0, 10),
+    planned_distance: index === 11 ? 30 : 0,
+    actual_distance: index === 11 ? 5.1 : 0,
+  };
+});
+
+function coordinates(line: Element) {
+  return line.getAttribute("points")!.trim().split(/\s+/).map((point) => point.split(",").map(Number));
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("MileageTrend", () => {
+  it("plots both mileage series chronologically, including every zero-mile week", () => {
+    render(<MileageTrend points={points} />);
+    const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
+    const lines = chart.querySelectorAll("polyline");
+    expect(lines).toHaveLength(2);
+    const [planned, actual] = Array.from(lines, coordinates);
+    expect(planned).toHaveLength(12);
+    expect(actual).toHaveLength(12);
+    for (let index = 0; index < 11; index++) {
+      expect(planned[index][1]).toBe(planned[0][1]);
+      expect(actual[index][1]).toBe(actual[0][1]);
+      expect(planned[index + 1][0]).toBeGreaterThan(planned[index][0]);
+    }
+    // Larger mileage is higher on the chart, and the current week is rightmost.
+    expect(planned[11][1]).toBeLessThan(actual[11][1]);
+    expect(actual[11][1]).toBeLessThan(actual[0][1]);
+    expect(chart).toHaveTextContent("6/29");
+    expect(chart).toHaveTextContent("9/14");
+  });
+
+  it("provides exact accessible data for all 12 weeks, including empty weeks", () => {
+    render(<MileageTrend points={points} />);
+    fireEvent.click(screen.getByText("View weekly data"));
+    const rows = within(screen.getByRole("table")).getAllByRole("row");
+    expect(rows).toHaveLength(13);
+    expect(rows[1]).toHaveTextContent("2026-06-29");
+    expect(within(rows[1]).getAllByText("0.00 mi")).toHaveLength(2);
+    expect(rows[12]).toHaveTextContent("2026-09-14");
+    expect(rows[12]).toHaveTextContent("30.00 mi");
+    expect(rows[12]).toHaveTextContent("5.10 mi");
+  });
+
+  it("keeps an all-zero history visible on a valid mileage scale", () => {
+    render(<MileageTrend points={points.map((point) => ({ ...point, planned_distance: 0, actual_distance: 0 }))} />);
+    const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
+    for (const line of chart.querySelectorAll("polyline")) {
+      const plotted = coordinates(line);
+      expect(plotted).toHaveLength(12);
+      expect(plotted.flat().every(Number.isFinite)).toBe(true);
+      expect(new Set(plotted.map(([, y]) => y)).size).toBe(1);
+    }
+  });
+
+  it("shows an intentional state when no history was returned", () => {
+    render(<MileageTrend points={[]} />);
+    expect(screen.getByText("No mileage history yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("retains all mileage points and the current week when date labels thin on mobile", () => {
+    vi.stubGlobal("ResizeObserver", vi.fn(function(callback: (entries: { contentRect: { width: number } }[]) => void) {
+      return {
+        observe: () => callback([{ contentRect: { width: 320 } }]),
+        disconnect: vi.fn(),
+      };
+    }));
+
+    render(<MileageTrend points={points} />);
+
+    const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
+    for (const line of chart.querySelectorAll("polyline")) {
+      expect(coordinates(line)).toHaveLength(12);
+    }
+    expect(within(chart).getByText("6/29")).toBeInTheDocument();
+    expect(within(chart).getByText("9/14")).toBeInTheDocument();
+    expect(within(chart).queryByText("7/6")).not.toBeInTheDocument();
+  });
+});
