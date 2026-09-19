@@ -30,7 +30,7 @@ The detailed sections below remain the source of scope and acceptance criteria.
 | --- | --- | --- | --- |
 | ENG-001 | P0 | Support Empty Training Weeks | ✅ Done |
 | ENG-002 | P0 | Use Runner Local Calendar Date | ✅ Done |
-| ENG-003 | P1 | Define Workout Domain Invariants | ⏳ Pending |
+| ENG-003 | P1 | Define Workout Domain Invariants | ✅ Done |
 | ENG-004 | P1 | Add Authentication and Workout Ownership | ⏳ Pending |
 | ENG-005 | P1 | Separate PR Planning Authority From Production AWS Mutation | ⏳ Pending |
 | ENG-006 | P1 | Make Infrastructure Bootstrap/Recreation Reproducible | ⏳ Pending |
@@ -182,6 +182,26 @@ Determine the current date using the user's local calendar date.
 # P1 — Before Persistence / Private Data
 
 ## ENG-003 — Define Workout Domain Invariants
+
+**Status:** ✅ Done — completed on `feat/workout-domain-rules`.
+
+The workout model represents a training session, and multiple sessions may share
+a date. Sessions have an explicit run, rest, strength, cross-training, or other
+type; a missing session is not stored as rest. Only `id` and `date` are required.
+Title, description, planned distance, start time, duration, and actual distance
+are optional, while status and type default to planned and run.
+
+Distances use miles, durations use seconds, and null means unknown or not
+applicable while zero remains an explicit value. Average pace is rounded seconds
+per mile derived from duration and positive distance rather than stored. Optional
+distance values must be finite and nonnegative, and duration must be
+nonnegative. Start time remains a local wall-clock value until user timezone
+semantics are introduced with persistence.
+
+Planned, completed, and skipped describe scheduling/execution state without
+requiring or forbidding metrics. Strict completeness rules and transition
+enforcement are deferred until mutation and persistence workflows exist. Create
+and update request models are likewise deferred until there are write endpoints.
 
 **Category:** Data integrity  
 **Timing:** Before persistence  

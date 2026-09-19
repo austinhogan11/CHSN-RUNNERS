@@ -5,9 +5,9 @@ import { WorkoutList } from "./WorkoutList";
 import type { Workout } from "../types";
 
 const workout: Workout = {
-  id: "run-1", date: "2026-09-18", title: "Easy Run", description: null,
+  id: "run-1", date: "2026-09-18", type: "run", title: "Easy Run", description: null,
   planned_distance: 5, start_time: null, duration_seconds: null,
-  distance: null, avg_pace_seconds: null, status: "skipped",
+  distance: null, status: "skipped",
 };
 
 afterEach(() => {
@@ -51,6 +51,41 @@ describe("WorkoutList", () => {
     expect(screen.getAllByRole("heading", { name: "Rest" })).toHaveLength(7);
     expect(screen.getByRole("article", { name: "Rest on 2026-10-05" })).toHaveTextContent("Mon");
     expect(screen.getByRole("article", { name: "Rest on 2026-10-11" })).toHaveTextContent("Sun");
+  });
+
+  it("derives pace from duration and distance", () => {
+    render(<WorkoutList
+      weekStart="2026-09-14"
+      workouts={[{ ...workout, duration_seconds: 2460, distance: 5.1, status: "completed" }]}
+    />);
+
+    const row = within(screen.getByRole("article", { name: "Easy Run on 2026-09-18" }));
+    expect(row.getByText("8:02 /mi")).toBeInTheDocument();
+  });
+
+  it("preserves multiple sessions on the same date", () => {
+    render(<WorkoutList
+      weekStart="2026-09-14"
+      workouts={[
+        { ...workout, id: "run-am", title: "Morning Run" },
+        { ...workout, id: "strength-pm", type: "strength", title: null },
+      ]}
+    />);
+
+    expect(screen.getAllByRole("article")).toHaveLength(8);
+    expect(screen.getByRole("article", { name: "Morning Run on 2026-09-18" })).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Strength on 2026-09-18" })).toBeInTheDocument();
+  });
+
+  it("renders an explicit rest session as a real workout record", () => {
+    render(<WorkoutList
+      weekStart="2026-09-14"
+      workouts={[{ ...workout, id: "rest-1", type: "rest", title: null, planned_distance: null }]}
+    />);
+
+    const row = within(screen.getByRole("article", { name: "Rest on 2026-09-18" }));
+    expect(row.getByText("Skipped")).toBeInTheDocument();
+    expect(row.getAllByText("—")).toHaveLength(3);
   });
 
   it("identifies today's workout using the local calendar date", () => {

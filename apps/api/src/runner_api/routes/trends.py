@@ -35,7 +35,7 @@ def get_mileage_trend(
             workout for workout in WORKOUTS if week_start <= workout.date <= week_end
         ]
 
-        planned_distance = sum(workout.planned_distance for workout in workouts)
+        planned_distance = sum(workout.planned_distance or 0 for workout in workouts)
 
         actual_distance = sum(
             workout.distance or 0

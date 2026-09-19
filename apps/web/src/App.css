@@ -85,6 +85,7 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .workout-info p { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 8px; overflow-wrap: anywhere; }
 .workout-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .workout-title h3 { overflow-wrap: anywhere; }
+.workout-type { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 .status { border: 1px solid; border-radius: 5px; padding: 3px 7px; font-size: 10px; line-height: 1.3; font-weight: 550; }
 .status-completed { color: #d0f66c; background: #25321c; border-color: #40502c; }
 .status-planned { color: #c1ccdf; background: #202836; border-color: #3b475c; }

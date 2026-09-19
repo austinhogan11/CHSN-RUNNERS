@@ -17,6 +17,17 @@ export function formatPace(seconds: number | null): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")} /mi`;
 }
 
+export function calculateAveragePaceSeconds(
+  durationSeconds: number | null,
+  distance: number | null,
+): number | null {
+  if (durationSeconds === null || distance === null || distance <= 0) {
+    return null;
+  }
+
+  return Math.round(durationSeconds / distance);
+}
+
 export function formatDuration(seconds: number | null): string {
   if (seconds === null) {
     return "—";
