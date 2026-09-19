@@ -2,8 +2,14 @@ import type { MileageTrendPoint, WeekSummary } from "./types";
 
 const API_BASE = "/api";
 
-export async function getWeek(date: string): Promise<WeekSummary> {
-  const response = await fetch(`${API_BASE}/weeks/${date}`);
+function authorizationHeaders(token: string): HeadersInit {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function getWeek(date: string, token: string): Promise<WeekSummary> {
+  const response = await fetch(`${API_BASE}/weeks/${date}`, {
+    headers: authorizationHeaders(token),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to load week: ${response.status}`);
@@ -14,6 +20,7 @@ export async function getWeek(date: string): Promise<WeekSummary> {
 
 export async function getMileageTrend(
   end: string,
+  token: string,
   weeks = 12,
 ): Promise<MileageTrendPoint[]> {
   const params = new URLSearchParams({
@@ -21,7 +28,9 @@ export async function getMileageTrend(
     weeks: String(weeks),
   });
 
-  const response = await fetch(`${API_BASE}/trends/mileage?${params}`);
+  const response = await fetch(`${API_BASE}/trends/mileage?${params}`, {
+    headers: authorizationHeaders(token),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to load mileage trend: ${response.status}`);
