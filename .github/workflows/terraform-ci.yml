@@ -15,6 +15,9 @@ permissions:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_clerk_authorized_parties: ${{ vars.CLERK_AUTHORIZED_PARTIES }}
+      TF_VAR_clerk_issuer: ${{ vars.CLERK_ISSUER }}
 
     defaults:
       run:

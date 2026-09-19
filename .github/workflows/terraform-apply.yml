@@ -14,6 +14,9 @@ concurrency:
 jobs:
   apply:
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_clerk_authorized_parties: ${{ vars.CLERK_AUTHORIZED_PARTIES }}
+      TF_VAR_clerk_issuer: ${{ vars.CLERK_ISSUER }}
 
     defaults:
       run:
@@ -33,6 +36,11 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::537690166345:role/chsn-runners-github-actions
           aws-region: us-east-1
+
+      - name: Validate Clerk configuration
+        run: |
+          test -n "$TF_VAR_clerk_issuer"
+          test -n "$TF_VAR_clerk_authorized_parties"
 
       - name: Terraform init
         run: terraform init -backend-config=backend.hcl
