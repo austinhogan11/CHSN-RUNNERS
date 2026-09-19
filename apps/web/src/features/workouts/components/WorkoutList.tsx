@@ -1,5 +1,5 @@
-import type { Workout, WorkoutStatus } from "../types";
-import { formatDistance, formatPace } from "../utils";
+import type { Workout, WorkoutStatus, WorkoutType } from "../types";
+import { calculateAveragePaceSeconds, formatDistance, formatPace } from "../utils";
 import { formatCalendarDate, formatLocalDate, getWeekDates } from "../../../utils/date";
 
 interface WorkoutListProps {
@@ -11,6 +11,14 @@ const statusLabels: Record<WorkoutStatus, string> = {
   planned: "Planned",
   completed: "Completed",
   skipped: "Skipped",
+};
+
+const typeLabels: Record<WorkoutType, string> = {
+  run: "Run",
+  rest: "Rest",
+  strength: "Strength",
+  cross_training: "Cross-training",
+  other: "Other",
 };
 
 export function WorkoutList({ weekStart, workouts }: WorkoutListProps) {
@@ -50,13 +58,17 @@ export function WorkoutList({ weekStart, workouts }: WorkoutListProps) {
             );
           }
 
-          return dayWorkouts.map((workout) => (
+          return dayWorkouts.map((workout) => {
+            const title = workout.title ?? typeLabels[workout.type];
+
+            return (
             <li key={workout.id}>
-              <article className={`workout-row${workout.date === today ? " is-today" : ""}`} aria-label={`${workout.title} on ${workout.date}`}>
+              <article className={`workout-row${workout.date === today ? " is-today" : ""}`} aria-label={`${title} on ${workout.date}`}>
                 <WorkoutDate day={workout.date} />
                 <div className="workout-info">
                   <div className="workout-title">
-                    <h3>{workout.title}</h3>
+                    <h3>{title}</h3>
+                    {workout.title && <span className="workout-type">{typeLabels[workout.type]}</span>}
                     <span className={`status status-${workout.status}`}>{statusLabels[workout.status]}</span>
                     {workout.date === today && <span className="today-label">Today</span>}
                   </div>
@@ -65,11 +77,12 @@ export function WorkoutList({ weekStart, workouts }: WorkoutListProps) {
                 <dl className="workout-metrics">
                   <div><dt>Planned</dt><dd>{formatDistance(workout.planned_distance)}</dd></div>
                   <div><dt>Actual</dt><dd>{formatDistance(workout.distance)}</dd></div>
-                  <div><dt>Avg. pace</dt><dd>{formatPace(workout.avg_pace_seconds)}</dd></div>
+                  <div><dt>Avg. pace</dt><dd>{formatPace(calculateAveragePaceSeconds(workout.duration_seconds, workout.distance))}</dd></div>
                 </dl>
               </article>
             </li>
-          ));
+            );
+          });
         })}
       </ul>
     </section>
