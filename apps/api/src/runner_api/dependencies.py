@@ -18,7 +18,7 @@ def get_workout_repository() -> WorkoutRepository:
     if settings.workout_repository == "memory":
         return InMemoryWorkoutRepository(
             WORKOUTS,
-            user_id=settings.workout_default_user_id,
+            user_id=settings.workout_demo_user_id,
         )
 
     if settings.workout_table_name is None:

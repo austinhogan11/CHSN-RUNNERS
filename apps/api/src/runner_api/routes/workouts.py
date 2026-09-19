@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from runner_api.config import settings
+from runner_api.auth import CurrentUser, get_current_user
 from runner_api.dependencies import get_workout_repository
 from runner_api.models.workout import WeekSummary, WorkoutStatus
 from runner_api.repositories.workouts import WorkoutRepository
@@ -18,13 +18,14 @@ def get_week_start(day: date) -> date:
 @router.get("/{day}", response_model=WeekSummary)
 def get_week(
     day: date,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
     repository: Annotated[WorkoutRepository, Depends(get_workout_repository)],
 ) -> WeekSummary:
     week_start = get_week_start(day)
     week_end = week_start + timedelta(days=6)
 
     workouts = repository.list_between(
-        settings.workout_default_user_id,
+        current_user.id,
         week_start,
         week_end,
     )

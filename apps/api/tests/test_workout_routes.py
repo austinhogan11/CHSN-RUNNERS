@@ -1,8 +1,10 @@
+from collections.abc import Iterator
 from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
 
+from runner_api.auth import CurrentUser, get_current_user
 from runner_api.config import settings
 from runner_api.dependencies import get_workout_repository
 from runner_api.main import app
@@ -10,6 +12,15 @@ from runner_api.models.workout import Workout, WorkoutStatus, WorkoutType
 from runner_api.repositories.workouts import InMemoryWorkoutRepository
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def authenticated_user() -> Iterator[None]:
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        id=settings.workout_demo_user_id
+    )
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_get_week_returns_summary() -> None:
@@ -41,6 +52,7 @@ def test_get_week_returns_empty_summary_when_no_workouts_exist(day: str) -> None
 
 
 def test_get_week_counts_multiple_same_day_sessions_without_overwriting() -> None:
+    user_id = "user_clerk_week"
     sessions = [
         Workout(
             id="double-1",
@@ -63,10 +75,23 @@ def test_get_week_counts_multiple_same_day_sessions_without_overwriting() -> Non
             status=WorkoutStatus.COMPLETED,
         ),
     ]
-    repository = InMemoryWorkoutRepository(
-        sessions,
-        user_id=settings.workout_default_user_id,
-    )
+
+    class RecordingRepository(InMemoryWorkoutRepository):
+        def __init__(self) -> None:
+            super().__init__(sessions, user_id=user_id)
+            self.user_ids: list[str] = []
+
+        def list_between(
+            self,
+            user_id: str,
+            start_date: date,
+            end_date: date,
+        ) -> list[Workout]:
+            self.user_ids.append(user_id)
+            return super().list_between(user_id, start_date, end_date)
+
+    repository = RecordingRepository()
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(id=user_id)
     app.dependency_overrides[get_workout_repository] = lambda: repository
 
     try:
@@ -83,6 +108,18 @@ def test_get_week_counts_multiple_same_day_sessions_without_overwriting() -> Non
         "double-2",
         "strength-1",
     ]
+    assert repository.user_ids == [user_id]
+    assert "runner-v1-default-user" not in repository.user_ids
+
+
+def test_get_week_rejects_unauthenticated_requests() -> None:
+    app.dependency_overrides.pop(get_current_user, None)
+
+    response = client.get("/weeks/2026-09-14")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Authentication required"}
+    assert response.headers["www-authenticate"] == "Bearer"
 
 
 def test_get_week_does_not_hide_repository_errors() -> None:

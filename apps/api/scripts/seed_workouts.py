@@ -15,7 +15,7 @@ def parse_args() -> argparse.Namespace:
         description="Seed the Runner workout table with the demo sessions.",
     )
     parser.add_argument("--table-name", required=True)
-    parser.add_argument("--user-id", default="runner-v1-default-user")
+    parser.add_argument("--user-id", required=True)
     parser.add_argument("--region", default="us-east-1")
     return parser.parse_args()
 

@@ -8,22 +8,27 @@ variables, which Terraform manages:
 
 - `WORKOUT_REPOSITORY=dynamodb`
 - `WORKOUT_TABLE_NAME=chsn-runners-workouts`
-- `WORKOUT_DEFAULT_USER_ID=runner-v1-default-user`
+- `CLERK_ISSUER=https://your-instance.clerk.accounts.dev`
+- `CLERK_AUTHORIZED_PARTIES=https://your-frontend.example`
 
-`WORKOUT_DEFAULT_USER_ID` is temporary single-user scaffolding. Authentication
-will replace it with the authenticated user's identity in a later product slice.
+Routes verify Clerk session tokens and use the verified `sub` claim as the
+repository user ID. Local in-memory demo data can be assigned to a Clerk user by
+setting `WORKOUT_DEMO_USER_ID` to that user's `user_...` ID.
 
 ## Seed demo workouts
 
-After the table has been created, an operator with `dynamodb:PutItem` permission
-can explicitly seed the existing demo sessions from `apps/api`:
+After signing in once, copy the new `user_...` ID from the Clerk Dashboard. An
+operator with `dynamodb:PutItem` permission can then explicitly reassign the
+existing demo sessions from `runner-v1-default-user` by running this from
+`apps/api`:
 
 ```sh
 uv run python scripts/seed_workouts.py \
   --table-name chsn-runners-workouts \
-  --user-id runner-v1-default-user \
+  --user-id user_replace_with_clerk_user_id \
   --region us-east-1
 ```
 
-The script uses stable workout IDs and timestamps, so rerunning it safely
-replaces the same four items. Deployment does not run this command automatically.
+The script uses the existing stable workout IDs, so each `PutItem` replaces that
+item's old ownership and GSI key instead of creating duplicates. Rerunning it is
+safe. Deployment does not run this command automatically.

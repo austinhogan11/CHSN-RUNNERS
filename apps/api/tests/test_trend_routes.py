@@ -1,7 +1,10 @@
+from collections.abc import Iterator
 from datetime import date
 
+import pytest
 from fastapi.testclient import TestClient
 
+from runner_api.auth import CurrentUser, get_current_user
 from runner_api.config import settings
 from runner_api.dependencies import get_workout_repository
 from runner_api.main import app
@@ -9,6 +12,15 @@ from runner_api.models.workout import Workout, WorkoutStatus
 from runner_api.repositories.workouts import InMemoryWorkoutRepository
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def authenticated_user() -> Iterator[None]:
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        id=settings.workout_demo_user_id
+    )
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_get_mileage_trend_defaults_to_12_weeks() -> None:
@@ -91,7 +103,21 @@ def test_get_mileage_trend_rejects_more_than_52_weeks() -> None:
     assert response.json() == {"detail": "weeks must be between 1 and 52"}
 
 
+def test_get_mileage_trend_rejects_unauthenticated_requests() -> None:
+    app.dependency_overrides.pop(get_current_user, None)
+
+    response = client.get(
+        "/trends/mileage",
+        params={"end": "2026-09-20"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Authentication required"}
+
+
 def test_get_mileage_trend_uses_one_repository_query_for_the_full_range() -> None:
+    user_id = "user_clerk_trend"
+
     class RecordingRepository(InMemoryWorkoutRepository):
         def __init__(self) -> None:
             super().__init__(
@@ -104,7 +130,7 @@ def test_get_mileage_trend_uses_one_repository_query_for_the_full_range() -> Non
                         status=WorkoutStatus.COMPLETED,
                     )
                 ],
-                user_id=settings.workout_default_user_id,
+                user_id=user_id,
             )
             self.calls: list[tuple[str, date, date]] = []
 
@@ -118,6 +144,7 @@ def test_get_mileage_trend_uses_one_repository_query_for_the_full_range() -> Non
             return super().list_between(user_id, start_date, end_date)
 
     repository = RecordingRepository()
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(id=user_id)
     app.dependency_overrides[get_workout_repository] = lambda: repository
 
     try:
@@ -131,11 +158,12 @@ def test_get_mileage_trend_uses_one_repository_query_for_the_full_range() -> Non
     assert response.status_code == 200
     assert repository.calls == [
         (
-            settings.workout_default_user_id,
+            user_id,
             date(2026, 9, 7),
             date(2026, 9, 20),
         )
     ]
+    assert user_id != "runner-v1-default-user"
     assert response.json() == [
         {
             "week_start": "2026-09-07",

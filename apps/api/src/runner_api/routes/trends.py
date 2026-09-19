@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from runner_api.config import settings
+from runner_api.auth import CurrentUser, get_current_user
 from runner_api.dependencies import get_workout_repository
 from runner_api.models.workout import MileageTrendPoint, WorkoutStatus
 from runner_api.repositories.workouts import WorkoutRepository
@@ -18,6 +18,7 @@ def get_week_start(day: date) -> date:
 @router.get("/mileage", response_model=list[MileageTrendPoint])
 def get_mileage_trend(
     end: date,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
     repository: Annotated[WorkoutRepository, Depends(get_workout_repository)],
     weeks: int = 12,
 ) -> list[MileageTrendPoint]:
@@ -31,7 +32,7 @@ def get_mileage_trend(
     range_start = end_week_start - timedelta(weeks=weeks - 1)
     range_end = end_week_start + timedelta(days=6)
     range_workouts = repository.list_between(
-        settings.workout_default_user_id,
+        current_user.id,
         range_start,
         range_end,
     )
