@@ -25,3 +25,8 @@ output "api_gateway_endpoint" {
 output "api_gateway_id" {
   value = aws_apigatewayv2_api.api.id
 }
+
+output "workout_table_name" {
+  description = "Name of the DynamoDB table containing workout sessions."
+  value       = aws_dynamodb_table.workouts.name
+}

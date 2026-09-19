@@ -50,12 +50,16 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      ENVIRONMENT = "production"
+      ENVIRONMENT             = "production"
+      WORKOUT_DEFAULT_USER_ID = "runner-v1-default-user"
+      WORKOUT_REPOSITORY      = "dynamodb"
+      WORKOUT_TABLE_NAME      = aws_dynamodb_table.workouts.name
     }
   }
 
   depends_on = [
     aws_iam_role_policy_attachment.api_lambda_basic_execution,
+    aws_iam_role_policy.api_workout_reads,
     aws_cloudwatch_log_group.api_lambda,
   ]
 
