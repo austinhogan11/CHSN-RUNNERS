@@ -1,9 +1,12 @@
 from datetime import date, timedelta
+from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from runner_api.data.workouts import WORKOUTS
+from runner_api.config import settings
+from runner_api.dependencies import get_workout_repository
 from runner_api.models.workout import WeekSummary, WorkoutStatus
+from runner_api.repositories.workouts import WorkoutRepository
 
 router = APIRouter(prefix="/weeks", tags=["weeks"])
 
@@ -13,13 +16,18 @@ def get_week_start(day: date) -> date:
 
 
 @router.get("/{day}", response_model=WeekSummary)
-def get_week(day: date) -> WeekSummary:
+def get_week(
+    day: date,
+    repository: Annotated[WorkoutRepository, Depends(get_workout_repository)],
+) -> WeekSummary:
     week_start = get_week_start(day)
     week_end = week_start + timedelta(days=6)
 
-    workouts = [
-        workout for workout in WORKOUTS if week_start <= workout.date <= week_end
-    ]
+    workouts = repository.list_between(
+        settings.workout_default_user_id,
+        week_start,
+        week_end,
+    )
 
     planned_distance = sum(workout.planned_distance or 0 for workout in workouts)
 
