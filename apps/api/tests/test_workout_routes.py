@@ -3,8 +3,11 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
+from runner_api.config import settings
+from runner_api.dependencies import get_workout_repository
 from runner_api.main import app
 from runner_api.models.workout import Workout, WorkoutStatus, WorkoutType
+from runner_api.repositories.workouts import InMemoryWorkoutRepository
 
 client = TestClient(app)
 
@@ -37,9 +40,7 @@ def test_get_week_returns_empty_summary_when_no_workouts_exist(day: str) -> None
     }
 
 
-def test_get_week_counts_multiple_same_day_sessions_without_overwriting(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_get_week_counts_multiple_same_day_sessions_without_overwriting() -> None:
     sessions = [
         Workout(
             id="double-1",
@@ -62,9 +63,16 @@ def test_get_week_counts_multiple_same_day_sessions_without_overwriting(
             status=WorkoutStatus.COMPLETED,
         ),
     ]
-    monkeypatch.setattr("runner_api.routes.workouts.WORKOUTS", sessions)
+    repository = InMemoryWorkoutRepository(
+        sessions,
+        user_id=settings.workout_default_user_id,
+    )
+    app.dependency_overrides[get_workout_repository] = lambda: repository
 
-    response = client.get("/weeks/2026-09-14")
+    try:
+        response = client.get("/weeks/2026-09-14")
+    finally:
+        app.dependency_overrides.pop(get_workout_repository, None)
 
     assert response.status_code == 200
     body = response.json()
@@ -75,3 +83,27 @@ def test_get_week_counts_multiple_same_day_sessions_without_overwriting(
         "double-2",
         "strength-1",
     ]
+
+
+def test_get_week_does_not_hide_repository_errors() -> None:
+    class FailingRepository:
+        def get(self, workout_id: str) -> Workout | None:
+            raise RuntimeError("DynamoDB unavailable")
+
+        def list_between(
+            self,
+            user_id: str,
+            start_date: date,
+            end_date: date,
+        ) -> list[Workout]:
+            raise RuntimeError("DynamoDB unavailable")
+
+    app.dependency_overrides[get_workout_repository] = FailingRepository
+    error_client = TestClient(app, raise_server_exceptions=False)
+
+    try:
+        response = error_client.get("/weeks/2026-09-14")
+    finally:
+        app.dependency_overrides.pop(get_workout_repository, None)
+
+    assert response.status_code == 500

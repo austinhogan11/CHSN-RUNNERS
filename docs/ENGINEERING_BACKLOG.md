@@ -916,15 +916,19 @@ The current Runner product sequence remains:
 - local calendar correctness
 - basic dashboard styling
 
-## Product 2 — Persistence Design
+## Product 2 — Persistent Workout Reads
 
-Before implementation:
+**Status:** ✅ Done — completed on `feat/workout-persistence`.
 
-- complete ENG-003 workout invariants
-- decide storage requirements
-- define user ownership
-- determine migration strategy
-- determine authentication requirements
+Workout sessions are stored in an on-demand DynamoDB table with direct ID lookup
+and a user/date index that preserves multiple sessions per date. Production read
+routes use the DynamoDB repository; local development and tests use the same
+domain behavior through an in-memory repository. Demo data is populated only by
+an explicit, repeatable seed command.
+
+Records are partitioned by a temporary configured default user for this
+read-only slice. ENG-004 remains pending; authenticated ownership and all write
+APIs are part of the next product work.
 
 ## Product 3 — Create / Edit / Log Workouts
 

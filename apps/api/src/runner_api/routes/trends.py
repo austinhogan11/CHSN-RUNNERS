@@ -1,9 +1,12 @@
 from datetime import date, timedelta
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from runner_api.data.workouts import WORKOUTS
+from runner_api.config import settings
+from runner_api.dependencies import get_workout_repository
 from runner_api.models.workout import MileageTrendPoint, WorkoutStatus
+from runner_api.repositories.workouts import WorkoutRepository
 
 router = APIRouter(prefix="/trends", tags=["trends"])
 
@@ -15,6 +18,7 @@ def get_week_start(day: date) -> date:
 @router.get("/mileage", response_model=list[MileageTrendPoint])
 def get_mileage_trend(
     end: date,
+    repository: Annotated[WorkoutRepository, Depends(get_workout_repository)],
     weeks: int = 12,
 ) -> list[MileageTrendPoint]:
     if weeks < 1 or weeks > 52:
@@ -24,6 +28,13 @@ def get_mileage_trend(
         )
 
     end_week_start = get_week_start(end)
+    range_start = end_week_start - timedelta(weeks=weeks - 1)
+    range_end = end_week_start + timedelta(days=6)
+    range_workouts = repository.list_between(
+        settings.workout_default_user_id,
+        range_start,
+        range_end,
+    )
 
     points: list[MileageTrendPoint] = []
 
@@ -32,7 +43,9 @@ def get_mileage_trend(
         week_end = week_start + timedelta(days=6)
 
         workouts = [
-            workout for workout in WORKOUTS if week_start <= workout.date <= week_end
+            workout
+            for workout in range_workouts
+            if week_start <= workout.date <= week_end
         ]
 
         planned_distance = sum(workout.planned_distance or 0 for workout in workouts)

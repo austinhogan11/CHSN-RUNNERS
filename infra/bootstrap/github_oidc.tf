@@ -254,12 +254,64 @@ data "aws_iam_policy_document" "github_actions_permissions" {
 
     actions = [
       "iam:GetRole",
+      "iam:GetRolePolicy",
       "iam:ListAttachedRolePolicies",
       "iam:ListRolePolicies",
     ]
 
     resources = [
       "arn:aws:iam::537690166345:role/chsn-runners-api-lambda",
+    ]
+  }
+
+  statement {
+    sid = "RunnerApiLambdaRolePolicyManagement"
+
+    actions = [
+      "iam:DeleteRolePolicy",
+      "iam:PutRolePolicy",
+    ]
+
+    resources = [
+      "arn:aws:iam::537690166345:role/chsn-runners-api-lambda",
+    ]
+  }
+
+  statement {
+    sid = "RunnerApiLambdaPassRole"
+
+    actions = [
+      "iam:PassRole",
+    ]
+
+    resources = [
+      "arn:aws:iam::537690166345:role/chsn-runners-api-lambda",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["lambda.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid = "RunnerWorkoutTable"
+
+    actions = [
+      "dynamodb:CreateTable",
+      "dynamodb:DeleteTable",
+      "dynamodb:DescribeContinuousBackups",
+      "dynamodb:DescribeTable",
+      "dynamodb:DescribeTimeToLive",
+      "dynamodb:ListTagsOfResource",
+      "dynamodb:TagResource",
+      "dynamodb:UntagResource",
+      "dynamodb:UpdateTable",
+    ]
+
+    resources = [
+      "arn:aws:dynamodb:us-east-1:537690166345:table/chsn-runners-workouts",
     ]
   }
 }
