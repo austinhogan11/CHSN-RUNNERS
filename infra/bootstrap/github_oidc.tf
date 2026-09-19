@@ -265,17 +265,34 @@ data "aws_iam_policy_document" "github_actions_permissions" {
   }
 
   statement {
-    sid = "RunnerApiLambdaRoleManagement"
+    sid = "RunnerApiLambdaRolePolicyManagement"
 
     actions = [
       "iam:DeleteRolePolicy",
-      "iam:PassRole",
       "iam:PutRolePolicy",
     ]
 
     resources = [
       "arn:aws:iam::537690166345:role/chsn-runners-api-lambda",
     ]
+  }
+
+  statement {
+    sid = "RunnerApiLambdaPassRole"
+
+    actions = [
+      "iam:PassRole",
+    ]
+
+    resources = [
+      "arn:aws:iam::537690166345:role/chsn-runners-api-lambda",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["lambda.amazonaws.com"]
+    }
   }
 
   statement {
