@@ -955,9 +955,10 @@ work.
 `feat/inline-workout-editing`.
 
 The backend supports authenticated create, partial update, and delete for workout
-sessions. The weekly dashboard now provides date-specific session creation,
-compact inline editing, completion logging with human-readable duration input,
-derived pace, and confirmed deletion. Successful mutations update weekly totals
+sessions. The weekly dashboard now provides date-specific session creation and
+direct field editing in each session row. Text and numeric fields save independently,
+type and status selections save immediately, pace stays derived, and deletion remains
+confirmed behind a compact action menu. Successful mutations update weekly totals
 immediately and refresh week and trend data. Multiple same-day sessions and
 presentation-only Rest days remain supported. Week navigation remains deferred.
 
