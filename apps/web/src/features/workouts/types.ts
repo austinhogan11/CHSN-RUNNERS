@@ -29,3 +29,30 @@ export interface MileageTrendPoint {
   planned_distance: number;
   actual_distance: number;
 }
+
+export interface WorkoutCreate {
+  date: string;
+  type?: WorkoutType;
+  status?: WorkoutStatus;
+  title?: string | null;
+  description?: string | null;
+  planned_distance?: number | null;
+  start_time?: string | null;
+  duration_seconds?: number | null;
+  distance?: number | null;
+}
+
+export type WorkoutUpdate = Partial<
+  Pick<
+    Workout,
+    | "date"
+    | "type"
+    | "status"
+    | "title"
+    | "description"
+    | "planned_distance"
+    | "start_time"
+    | "duration_seconds"
+    | "distance"
+  >
+>;
