@@ -129,12 +129,14 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     const run = within(screen.getByRole("article", { name: "Easy Run on 2026-09-14" }));
-    for (const value of ["Easy Run", "Keep it relaxed", "Mon", "Sep 14", "5.00 mi", "5.10 mi", "8:02 /mi", "Completed"]) {
+    for (const value of ["Easy Run", "Keep it relaxed", "5.00 mi", "5.10 mi", "41:00", "8:02 /mi", "Completed"]) {
       expect(run.getByText(value)).toBeInTheDocument();
     }
+    expect(screen.getByText("Mon")).toBeInTheDocument();
+    expect(screen.getByText("Sep 14")).toBeInTheDocument();
     const plannedRun = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
     expect(plannedRun.getAllByText("Planned")).toHaveLength(2);
-    expect(plannedRun.getAllByText("—")).toHaveLength(2);
+    expect(plannedRun.getAllByText("—")).toHaveLength(3);
     expect(screen.getAllByRole("article")).toHaveLength(7);
     expect(screen.getAllByRole("heading", { name: "Rest" })).toHaveLength(5);
 
@@ -187,6 +189,99 @@ describe("App", () => {
     expect(
       screen.queryByText("Unable to load runner dashboard."),
     ).not.toBeInTheDocument();
+  });
+
+  it("creates a session and refreshes the week totals and trend", async () => {
+    const emptyWeek = {
+      week_start: "2026-09-14",
+      planned_distance: 0,
+      actual_distance: 0,
+      workouts: [],
+    };
+    const createdWorkout = {
+      ...weekResponse.workouts[1],
+      id: "workout-new",
+      date: "2026-09-16",
+      title: "Tempo Run",
+      planned_distance: 6,
+    };
+    const refreshedWeek = {
+      week_start: "2026-09-14",
+      planned_distance: 6,
+      actual_distance: 0,
+      workouts: [createdWorkout],
+    };
+    const refreshedTrend = trendResponse.map((point) => (
+      point.week_start === "2026-09-14"
+        ? { ...point, planned_distance: 6, actual_distance: 0 }
+        : point
+    ));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => emptyWeek })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => trendResponse })
+      .mockResolvedValueOnce({ ok: true, status: 201, json: async () => createdWorkout })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshedWeek })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshedTrend });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Add session on 2026-09-16/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Tempo Run" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Planned miles" }), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("article", { name: "Tempo Run on 2026-09-16" })).toBeInTheDocument();
+    const summary = within(screen.getByRole("region", { name: "This Week" }));
+    expect(summary.getByText("6.00 mi")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer session-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        date: "2026-09-16",
+        title: "Tempo Run",
+        planned_distance: 6,
+      }),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("keeps a successful mutation when the follow-up refresh fails", async () => {
+    const emptyWeek = {
+      week_start: "2026-09-14",
+      planned_distance: 0,
+      actual_distance: 0,
+      workouts: [],
+    };
+    const createdWorkout = {
+      ...weekResponse.workouts[1],
+      id: "workout-new",
+      date: "2026-09-17",
+      title: "Steady Run",
+      planned_distance: 4,
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => emptyWeek })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => trendResponse })
+      .mockResolvedValueOnce({ ok: true, status: 201, json: async () => createdWorkout })
+      .mockRejectedValue(new Error("refresh failed"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add session on 2026-09-17" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Steady Run" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Planned miles" }), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("article", { name: "Steady Run on 2026-09-17" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Change saved. Updated trend data could not be loaded.",
+    );
+    expect(screen.queryByRole("button", { name: "Adding..." })).not.toBeInTheDocument();
   });
 
   it.each([

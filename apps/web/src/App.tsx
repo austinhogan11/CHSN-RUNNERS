@@ -1,13 +1,23 @@
 import { Show, SignIn, UserButton, useAuth } from "@clerk/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { getMileageTrend, getWeek } from "./features/workouts/api";
+import {
+  createWorkout,
+  deleteWorkout,
+  getMileageTrend,
+  getWeek,
+  updateWorkout,
+  WorkoutApiError,
+} from "./features/workouts/api";
 import { MileageTrend } from "./features/workouts/components/MileageTrend";
 import { WeekSummary } from "./features/workouts/components/WeekSummary";
 import { WorkoutList } from "./features/workouts/components/WorkoutList";
 import type {
   MileageTrendPoint,
   WeekSummary as WeekSummaryData,
+  Workout,
+  WorkoutCreate,
+  WorkoutUpdate,
 } from "./features/workouts/types";
 import { formatLocalDate } from "./utils/date";
 import "./App.css";
@@ -46,29 +56,79 @@ function Dashboard() {
   const [week, setWeek] = useState<WeekSummaryData | null>(null);
   const [trend, setTrend] = useState<MileageTrendPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const today = useMemo(() => formatLocalDate(new Date()), []);
+
+  async function requireToken(): Promise<string> {
+    const token = await getToken();
+    if (!token) {
+      throw new WorkoutApiError("No active Clerk session token", 401);
+    }
+    return token;
+  }
+
+  const refreshDashboard = useCallback(async (token: string): Promise<void> => {
+    const [weekData, trendData] = await Promise.all([
+      getWeek(today, token),
+      getMileageTrend(today, token),
+    ]);
+    setWeek(weekData);
+    setTrend(trendData);
+  }, [today]);
 
   useEffect(() => {
-    const today = formatLocalDate(new Date());
-
     getToken()
       .then((token) => {
         if (!token) {
           throw new Error("No active Clerk session token");
         }
-
-        return Promise.all([
-          getWeek(today, token),
-          getMileageTrend(today, token),
-        ]);
-      })
-      .then(([weekData, trendData]) => {
-        setWeek(weekData);
-        setTrend(trendData);
+        return refreshDashboard(token);
       })
       .catch(() => {
         setError("Unable to load runner dashboard.");
       });
-  }, [getToken]);
+  }, [getToken, refreshDashboard]);
+
+  async function handleCreate(workout: WorkoutCreate): Promise<void> {
+    const token = await requireToken();
+    const created = await createWorkout(workout, token);
+    setWeek((current) => updateWeek(current, (workouts) => [...workouts, created]));
+    await refreshAfterMutation(token);
+  }
+
+  async function handleUpdate(
+    workoutId: string,
+    changes: WorkoutUpdate,
+  ): Promise<void> {
+    const token = await requireToken();
+    const updated = await updateWorkout(workoutId, changes, token);
+    setWeek((current) => updateWeek(
+      current,
+      (workouts) => workouts.map((workout) => (
+        workout.id === workoutId ? updated : workout
+      )),
+    ));
+    await refreshAfterMutation(token);
+  }
+
+  async function handleDelete(workoutId: string): Promise<void> {
+    const token = await requireToken();
+    await deleteWorkout(workoutId, token);
+    setWeek((current) => updateWeek(
+      current,
+      (workouts) => workouts.filter((workout) => workout.id !== workoutId),
+    ));
+    await refreshAfterMutation(token);
+  }
+
+  async function refreshAfterMutation(token: string): Promise<void> {
+    setRefreshNotice(null);
+    try {
+      await refreshDashboard(token);
+    } catch {
+      setRefreshNotice("Change saved. Updated trend data could not be loaded.");
+    }
+  }
 
   if (error) {
     return (
@@ -96,9 +156,42 @@ function Dashboard() {
 
       <WeekSummary summary={week} />
 
-      <WorkoutList weekStart={week.week_start} workouts={week.workouts} />
+      {refreshNotice && <p className="mutation-notice" role="status">{refreshNotice}</p>}
+
+      <WorkoutList
+        weekStart={week.week_start}
+        workouts={week.workouts}
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+      />
     </main>
   );
+}
+
+function updateWeek(
+  current: WeekSummaryData | null,
+  transform: (workouts: Workout[]) => Workout[],
+): WeekSummaryData | null {
+  if (!current) {
+    return current;
+  }
+
+  const workouts = transform(current.workouts);
+  return {
+    ...current,
+    workouts,
+    planned_distance: workouts.reduce(
+      (total, workout) => total + (workout.planned_distance ?? 0),
+      0,
+    ),
+    actual_distance: workouts.reduce(
+      (total, workout) => (
+        workout.status === "completed" ? total + (workout.distance ?? 0) : total
+      ),
+      0,
+    ),
+  };
 }
 
 function DashboardHeader() {
