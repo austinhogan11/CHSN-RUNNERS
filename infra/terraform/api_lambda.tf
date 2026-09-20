@@ -61,6 +61,7 @@ resource "aws_lambda_function" "api" {
   depends_on = [
     aws_iam_role_policy_attachment.api_lambda_basic_execution,
     aws_iam_role_policy.api_workout_reads,
+    aws_iam_role_policy.api_workout_writes,
     aws_cloudwatch_log_group.api_lambda,
   ]
 

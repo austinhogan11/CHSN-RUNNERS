@@ -65,3 +65,25 @@ resource "aws_iam_role_policy" "api_workout_reads" {
   role   = aws_iam_role.api_lambda.id
   policy = data.aws_iam_policy_document.api_workout_reads.json
 }
+
+data "aws_iam_policy_document" "api_workout_writes" {
+  statement {
+    sid = "MutateWorkoutItems"
+
+    actions = [
+      "dynamodb:DeleteItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+
+    resources = [
+      aws_dynamodb_table.workouts.arn,
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "api_workout_writes" {
+  name   = "chsn-runners-api-workout-writes"
+  role   = aws_iam_role.api_lambda.id
+  policy = data.aws_iam_policy_document.api_workout_writes.json
+}
