@@ -950,12 +950,16 @@ work.
 
 ## Product 3 — Create / Edit / Log Workouts
 
-**Status:** 🚧 In Progress — authenticated workout mutation API complete on
-`feat/workout-write-api`; frontend editing remains deferred.
+**Status:** ✅ Done — authenticated mutation API completed on
+`feat/workout-write-api`; weekly inline editing completed on
+`feat/inline-workout-editing`.
 
-The backend now supports authenticated create, partial update, and delete for
-workout sessions. IDs and UTC timestamps are server-managed, DynamoDB writes are
-conditional, and missing or cross-user IDs share non-leaky `404` behavior.
+The backend supports authenticated create, partial update, and delete for workout
+sessions. The weekly dashboard now provides date-specific session creation,
+compact inline editing, completion logging with human-readable duration input,
+derived pace, and confirmed deletion. Successful mutations update weekly totals
+immediately and refresh week and trend data. Multiple same-day sessions and
+presentation-only Rest days remain supported. Week navigation remains deferred.
 
 Support the primary workflow:
 
