@@ -958,9 +958,12 @@ The backend supports authenticated create, partial update, and delete for workou
 sessions. The weekly dashboard now provides date-specific session creation and
 direct field editing in each session row. Text and numeric fields save independently,
 type and status selections save immediately, pace stays derived, and deletion remains
-confirmed behind a compact action menu. Successful mutations update weekly totals
-immediately and refresh week and trend data. Multiple same-day sessions and
-presentation-only Rest days remain supported. Week navigation remains deferred.
+confirmed behind a compact action menu. A follow-up Product 3 polish pass keeps the
+type and status selectors actionable on the first click, stabilizes inline editor
+dimensions, and presents session creation as a compact insertion row. Successful
+mutations update weekly totals immediately and refresh week and trend data. Multiple
+same-day sessions and presentation-only Rest days remain supported. Week navigation
+remains deferred.
 
 Support the primary workflow:
 
