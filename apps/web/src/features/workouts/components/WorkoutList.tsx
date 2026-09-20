@@ -127,7 +127,6 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
           <InlineSelectField
             label="Type"
             value={workout.type}
-            displayValue={typeLabels[workout.type]}
             options={typeOptions}
             onSave={(value) => onUpdate(workout.id, { type: value })}
             className="workout-type editable-type"
@@ -146,7 +145,6 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
       <InlineSelectField
         label="Status"
         value={workout.status}
-        displayValue={statusLabels[workout.status]}
         options={statusOptions}
         onSave={(value) => onUpdate(workout.id, { status: value })}
         className={`status status-${workout.status}`}

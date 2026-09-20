@@ -146,7 +146,6 @@ interface SelectOption<Value extends string> {
 interface InlineSelectFieldProps<Value extends string> {
   label: string;
   value: Value;
-  displayValue: string;
   options: Array<SelectOption<Value>>;
   onSave: (value: Value) => Promise<void>;
   className?: string;
@@ -155,29 +154,20 @@ interface InlineSelectFieldProps<Value extends string> {
 export function InlineSelectField<Value extends string>({
   label,
   value,
-  displayValue,
   options,
   onSave,
   className = "",
 }: InlineSelectFieldProps<Value>) {
-  const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
-
-  function beginEditing(): void {
-    setDraft(value);
-    setError(null);
-    setIsEditing(true);
-  }
 
   async function save(nextValue: Value): Promise<void> {
     if (savingRef.current) {
       return;
     }
     if (nextValue === value) {
-      setIsEditing(false);
       return;
     }
 
@@ -186,7 +176,6 @@ export function InlineSelectField<Value extends string>({
     setError(null);
     try {
       await onSave(nextValue);
-      setIsEditing(false);
     } catch (saveError) {
       setError(mutationErrorMessage(saveError));
     } finally {
@@ -195,43 +184,16 @@ export function InlineSelectField<Value extends string>({
     }
   }
 
-  if (!isEditing) {
-    return (
-      <button
-        className={`editable-value ${className}`.trim()}
-        type="button"
-        aria-label={`Edit ${label}`}
-        onClick={beginEditing}
-      >
-        {displayValue}
-      </button>
-    );
-  }
-
   return (
-    <div className={`inline-editor ${className}`.trim()}>
+    <div className={`inline-select ${className}`.trim()}>
       <select
-        autoFocus
-        aria-label={label}
-        value={draft}
+        aria-label={`Edit ${label}`}
+        value={isSaving || error ? draft : value}
         disabled={isSaving}
         onChange={(event) => {
           const nextValue = event.target.value as Value;
           setDraft(nextValue);
           void save(nextValue);
-        }}
-        onBlur={() => {
-          if (!savingRef.current && !error) {
-            setIsEditing(false);
-          }
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            setDraft(value);
-            setError(null);
-            setIsEditing(false);
-          }
         }}
       >
         {options.map((option) => (

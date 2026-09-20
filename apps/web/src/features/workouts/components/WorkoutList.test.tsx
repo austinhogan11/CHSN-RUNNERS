@@ -68,7 +68,7 @@ describe("WorkoutList presentation", () => {
     expect(screen.getAllByRole("button", { name: /Add session on/ })).toHaveLength(7);
     expect(screen.getAllByRole("article")).toHaveLength(7);
     const row = within(screen.getByRole("article", { name: "Easy Run on 2026-09-18" }));
-    expect(row.getByRole("button", { name: "Edit Status" })).toHaveTextContent("Skipped");
+    expect(row.getByRole("combobox", { name: "Edit Status" })).toHaveValue("skipped");
     expect(row.getByRole("button", { name: "Edit Planned miles" })).toHaveTextContent("5.00 mi");
     expect(screen.getByText("Fri")).toBeInTheDocument();
     expect(screen.getByText("Sep 18")).toBeInTheDocument();
@@ -103,8 +103,8 @@ describe("WorkoutList presentation", () => {
   it("renders an explicit rest session as an editable persisted workout", () => {
     renderList([{ ...workout, id: "rest-1", type: "rest", title: null, planned_distance: null }]);
     const row = within(screen.getByRole("article", { name: "Rest on 2026-09-18" }));
-    expect(row.getByRole("button", { name: "Edit Type" })).toHaveTextContent("Rest");
-    expect(row.getByRole("button", { name: "Edit Status" })).toHaveTextContent("Skipped");
+    expect(row.getByRole("combobox", { name: "Edit Type" })).toHaveValue("rest");
+    expect(row.getByRole("combobox", { name: "Edit Status" })).toHaveValue("skipped");
     expect(row.getByLabelText("Actions for Rest")).toBeInTheDocument();
   });
 
@@ -231,11 +231,13 @@ describe("direct field editing", () => {
   it.each([
     ["Type", "strength", { type: "strength" }],
     ["Status", "completed", { status: "completed" }],
-  ])("saves %s immediately and patches only that selection", async (label, value, changes) => {
+  ])("exposes %s as a first-click selector and saves immediately", async (label, value, changes) => {
     const onUpdate = vi.fn(async () => {});
     renderList([workout], onUpdate);
-    edit(label as string);
-    fireEvent.change(screen.getByRole("combobox", { name: label as string }), { target: { value } });
+    const select = screen.getByRole("combobox", { name: `Edit ${label as string}` });
+    expect(select).toBeEnabled();
+    fireEvent.mouseDown(select);
+    fireEvent.change(select, { target: { value } });
     await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-1", changes));
   });
 
@@ -283,9 +285,11 @@ describe("compact session actions", () => {
     const onCreate = vi.fn(async () => {});
     render(<WorkoutList weekStart="2026-09-14" workouts={[]} onCreate={onCreate} onUpdate={noUpdate} onDelete={noDelete} />);
     fireEvent.click(screen.getByRole("button", { name: /Add session on 2026-09-16/ }));
-    expect(screen.getByRole("combobox", { name: "Type" })).toHaveValue("run");
-    expect(screen.getByRole("textbox", { name: "Title" })).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", { name: "Planned miles" })).toBeInTheDocument();
+    const addRow = screen.getByRole("form", { name: "New session on 2026-09-16" });
+    expect(within(addRow).getByRole("combobox", { name: "Type" })).toHaveValue("run");
+    expect(within(addRow).getByRole("textbox", { name: "Title" })).toHaveAttribute("placeholder", "Workout title...");
+    expect(within(addRow).getByRole("spinbutton", { name: "Planned miles" })).toHaveAttribute("placeholder", "5.0");
+    expect(within(addRow).getByRole("button", { name: "Cancel adding session" })).toHaveTextContent("×");
     expect(screen.queryByLabelText("Actual miles")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Duration")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add" }));

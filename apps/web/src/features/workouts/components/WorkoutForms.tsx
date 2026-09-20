@@ -71,26 +71,25 @@ export function AddSessionForm({ day, onCreate }: AddSessionFormProps) {
   }
 
   return (
-    <form className="session-form add-session-form" onSubmit={handleSubmit}>
-      <div className="form-field compact-field">
-        <label htmlFor={`${id}-type`}>Type</label>
+    <form className="add-session-form" aria-label={`New session on ${day}`} onSubmit={handleSubmit}>
+      <div className="add-type-field">
+        <label className="sr-only" htmlFor={`${id}-type`}>Type</label>
         <select id={`${id}-type`} value={type} disabled={isSaving} onChange={(event) => setType(event.target.value as WorkoutType)}>
           {workoutTypes.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
       </div>
-      <div className="form-field grow-field">
-        <label htmlFor={`${id}-title`}>Title</label>
-        <input id={`${id}-title`} value={title} disabled={isSaving} placeholder="Easy run" onChange={(event) => setTitle(event.target.value)} />
+      <div className="add-title-field">
+        <label className="sr-only" htmlFor={`${id}-title`}>Title</label>
+        <input id={`${id}-title`} value={title} disabled={isSaving} placeholder="Workout title..." onChange={(event) => setTitle(event.target.value)} />
       </div>
-      <div className="form-field compact-field">
-        <label htmlFor={`${id}-planned`}>Planned miles</label>
-        <input id={`${id}-planned`} type="number" min="0" step="any" value={plannedDistance} disabled={isSaving} onChange={(event) => setPlannedDistance(event.target.value)} />
+      <div className="add-distance-field">
+        <label className="sr-only" htmlFor={`${id}-planned`}>Planned miles</label>
+        <input id={`${id}-planned`} type="number" inputMode="decimal" min="0" step="any" value={plannedDistance} disabled={isSaving} placeholder="5.0" onChange={(event) => setPlannedDistance(event.target.value)} />
+        <span aria-hidden="true">mi</span>
       </div>
-      <div className="form-actions">
-        <button className="primary-button" type="submit" disabled={isSaving}>{isSaving ? "Adding..." : "Add"}</button>
-        <button className="text-button" type="button" disabled={isSaving} onClick={() => { reset(); setIsOpen(false); }}>Cancel</button>
-      </div>
-      {error && <p className="form-error form-wide" role="alert">{error}</p>}
+      <button className="compact-add-button" type="submit" disabled={isSaving}>{isSaving ? "Adding..." : "Add"}</button>
+      <button className="compact-cancel-button" type="button" aria-label="Cancel adding session" disabled={isSaving} onClick={() => { reset(); setIsOpen(false); }}>×</button>
+      {error && <p className="form-error add-session-error" role="alert">{error}</p>}
     </form>
   );
 }
