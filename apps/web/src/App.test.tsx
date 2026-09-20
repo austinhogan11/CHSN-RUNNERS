@@ -136,7 +136,7 @@ describe("App", () => {
     expect(screen.getByText("Sep 14")).toBeInTheDocument();
     const plannedRun = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
     expect(plannedRun.getAllByText("Planned")).toHaveLength(2);
-    expect(plannedRun.getAllByText("—")).toHaveLength(3);
+    expect(plannedRun.getAllByText("—")).toHaveLength(4);
     expect(screen.getAllByRole("article")).toHaveLength(7);
     expect(screen.getAllByRole("heading", { name: "Rest" })).toHaveLength(5);
 

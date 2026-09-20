@@ -1,21 +1,17 @@
 import { useState } from "react";
 
 import { mutationErrorMessage } from "../api";
-import type {
-  Workout,
-  WorkoutCreate,
-  WorkoutStatus,
-  WorkoutType,
-  WorkoutUpdate,
-} from "../types";
+import type { Workout, WorkoutCreate, WorkoutStatus, WorkoutType, WorkoutUpdate } from "../types";
 import {
   calculateAveragePaceSeconds,
   formatDistance,
   formatDuration,
   formatPace,
+  parseDurationInput,
 } from "../utils";
 import { formatCalendarDate, formatLocalDate, getWeekDates } from "../../../utils/date";
-import { AddSessionForm, WorkoutEditor } from "./WorkoutForms";
+import { AddSessionForm } from "./WorkoutForms";
+import { InlineInputField, InlineSelectField } from "./InlineWorkoutFields";
 
 interface WorkoutListProps {
   weekStart: string;
@@ -31,6 +27,11 @@ const statusLabels: Record<WorkoutStatus, string> = {
   skipped: "Skipped",
 };
 
+const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
+  value: value as WorkoutStatus,
+  label,
+}));
+
 const typeLabels: Record<WorkoutType, string> = {
   run: "Run",
   rest: "Rest",
@@ -39,13 +40,12 @@ const typeLabels: Record<WorkoutType, string> = {
   other: "Other",
 };
 
-export function WorkoutList({
-  weekStart,
-  workouts,
-  onCreate,
-  onUpdate,
-  onDelete,
-}: WorkoutListProps) {
+const typeOptions = Object.entries(typeLabels).map(([value, label]) => ({
+  value: value as WorkoutType,
+  label,
+}));
+
+export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete }: WorkoutListProps) {
   const today = formatLocalDate(new Date());
   const workoutsByDate = new Map<string, Workout[]>();
   for (const workout of workouts) {
@@ -67,30 +67,18 @@ export function WorkoutList({
         {getWeekDates(weekStart).map((day) => {
           const dayWorkouts = workoutsByDate.get(day) ?? [];
           const isToday = day === today;
-
           return (
             <li className={`workout-day${isToday ? " is-today" : ""}`} key={day}>
               <WorkoutDate day={day} isToday={isToday} />
               <div className="day-sessions">
                 {dayWorkouts.length === 0 && (
                   <article className="session-row rest-row" aria-label={`Rest on ${day}`}>
-                    <div className="workout-info">
-                      <div className="workout-title">
-                        <h3>Rest</h3>
-                      </div>
-                    </div>
+                    <div className="workout-info"><div className="workout-title"><h3>Rest</h3></div></div>
                   </article>
                 )}
-
                 {dayWorkouts.map((workout) => (
-                  <WorkoutSession
-                    key={workout.id}
-                    workout={workout}
-                    onUpdate={onUpdate}
-                    onDelete={onDelete}
-                  />
+                  <WorkoutSession key={workout.id} workout={workout} onUpdate={onUpdate} onDelete={onDelete} />
                 ))}
-
                 <AddSessionForm day={day} onCreate={onCreate} />
               </div>
             </li>
@@ -108,26 +96,10 @@ interface WorkoutSessionProps {
 }
 
 function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
-  const [isEditing, setIsEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const title = workout.title ?? typeLabels[workout.type];
-
-  if (isEditing) {
-    return (
-      <article className="session-row editing-row" aria-label={`Edit ${title} on ${workout.date}`}>
-        <WorkoutEditor
-          workout={workout}
-          onCancel={() => setIsEditing(false)}
-          onSave={async (changes) => {
-            await onUpdate(workout.id, changes);
-            setIsEditing(false);
-          }}
-        />
-      </article>
-    );
-  }
 
   async function handleDelete(): Promise<void> {
     setIsDeleting(true);
@@ -144,65 +116,83 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
     <article className="session-row" aria-label={`${title} on ${workout.date}`}>
       <div className="workout-info">
         <div className="workout-title">
-          <h3>{title}</h3>
-          {workout.title && <span className="workout-type">{typeLabels[workout.type]}</span>}
-          <span className={`status status-${workout.status}`}>{statusLabels[workout.status]}</span>
+          <InlineInputField
+            label="Title"
+            displayValue={workout.title ?? "Add title"}
+            editValue={workout.title ?? ""}
+            parse={parseNullableText}
+            onSave={(value) => onUpdate(workout.id, { title: value })}
+            className={`editable-title${workout.title ? "" : " empty-value"}`}
+          />
+          <InlineSelectField
+            label="Type"
+            value={workout.type}
+            displayValue={typeLabels[workout.type]}
+            options={typeOptions}
+            onSave={(value) => onUpdate(workout.id, { type: value })}
+            className="workout-type editable-type"
+          />
         </div>
-        {workout.description && <p>{workout.description}</p>}
-        {workout.start_time && (
-          <p className="session-start">Start {workout.start_time.slice(0, 5)}</p>
-        )}
+        <InlineInputField
+          label="Description"
+          displayValue={workout.description ?? "Add note"}
+          editValue={workout.description ?? ""}
+          parse={parseNullableText}
+          onSave={(value) => onUpdate(workout.id, { description: value })}
+          className={`editable-note${workout.description ? "" : " empty-value"}`}
+        />
       </div>
 
+      <InlineSelectField
+        label="Status"
+        value={workout.status}
+        displayValue={statusLabels[workout.status]}
+        options={statusOptions}
+        onSave={(value) => onUpdate(workout.id, { status: value })}
+        className={`status status-${workout.status}`}
+      />
+
       <dl className="workout-metrics">
-        <div><dt>Planned</dt><dd>{formatDistance(workout.planned_distance)}</dd></div>
-        <div><dt>Actual</dt><dd>{formatDistance(workout.distance)}</dd></div>
-        <div><dt>Duration</dt><dd>{formatDuration(workout.duration_seconds)}</dd></div>
-        <div>
-          <dt>Avg. pace</dt>
-          <dd>{formatPace(calculateAveragePaceSeconds(workout.duration_seconds, workout.distance))}</dd>
-        </div>
+        <Metric label="Planned">
+          <InlineInputField label="Planned miles" displayValue={formatDistance(workout.planned_distance)} editValue={numberInput(workout.planned_distance)} parse={parseNullableDistance} onSave={(value) => onUpdate(workout.id, { planned_distance: value })} inputType="number" inputMode="decimal" min="0" step="any" unit="mi" />
+        </Metric>
+        <Metric label="Actual">
+          <InlineInputField label="Actual miles" displayValue={formatDistance(workout.distance)} editValue={numberInput(workout.distance)} parse={parseNullableDistance} onSave={(value) => onUpdate(workout.id, { distance: value })} inputType="number" inputMode="decimal" min="0" step="any" unit="mi" />
+        </Metric>
+        <Metric label="Duration">
+          <InlineInputField label="Duration" displayValue={formatDuration(workout.duration_seconds)} editValue={durationInput(workout.duration_seconds)} parse={parseDurationInput} onSave={(value) => onUpdate(workout.id, { duration_seconds: value })} inputMode="numeric" placeholder="MM:SS" />
+        </Metric>
+        <Metric label="Start">
+          <InlineInputField label="Start time" displayValue={workout.start_time?.slice(0, 5) ?? "—"} editValue={workout.start_time ?? ""} parse={parseNullableText} onSave={(value) => onUpdate(workout.id, { start_time: value })} inputType="time" step="1" />
+        </Metric>
+        <Metric label="Avg. pace">
+          {formatPace(calculateAveragePaceSeconds(workout.duration_seconds, workout.distance))}
+        </Metric>
       </dl>
 
-      <div className="session-actions">
+      <div className={`session-actions${confirmingDelete ? " is-confirming" : ""}`}>
         {!confirmingDelete ? (
-          <>
-            <button className="text-button" type="button" onClick={() => setIsEditing(true)}>
-              Edit
-            </button>
-            <button
-              className="text-button danger-button"
-              type="button"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              Delete
-            </button>
-          </>
+          <details className="session-overflow">
+            <summary aria-label={`Actions for ${title}`}>⋯</summary>
+            <div className="session-menu">
+              <button className="text-button danger-button" type="button" onClick={() => setConfirmingDelete(true)}>Delete session</button>
+            </div>
+          </details>
         ) : (
           <div className="delete-confirmation" role="group" aria-label={`Delete ${title}`}>
             <span>Delete this session?</span>
-            <button
-              className="text-button danger-button"
-              type="button"
-              disabled={isDeleting}
-              onClick={handleDelete}
-            >
-              {isDeleting ? "Deleting..." : "Confirm delete"}
-            </button>
-            <button
-              className="text-button"
-              type="button"
-              disabled={isDeleting}
-              onClick={() => setConfirmingDelete(false)}
-            >
-              Keep session
-            </button>
+            <button className="text-button danger-button" type="button" disabled={isDeleting} onClick={handleDelete}>{isDeleting ? "Deleting..." : "Confirm delete"}</button>
+            <button className="text-button" type="button" disabled={isDeleting} onClick={() => setConfirmingDelete(false)}>Keep session</button>
           </div>
         )}
         {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
       </div>
     </article>
   );
+}
+
+function Metric({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div><dt>{label}</dt><dd>{children}</dd></div>;
 }
 
 function WorkoutDate({ day, isToday }: { day: string; isToday: boolean }) {
@@ -215,4 +205,23 @@ function WorkoutDate({ day, isToday }: { day: string; isToday: boolean }) {
       {isToday && <span className="today-label">Today</span>}
     </div>
   );
+}
+
+function parseNullableText(value: string): string | null {
+  return value.trim() || null;
+}
+
+function parseNullableDistance(value: string): number | null {
+  if (value.trim() === "") return null;
+  const distance = Number(value);
+  if (!Number.isFinite(distance) || distance < 0) throw new Error("Distance must be zero or greater");
+  return distance;
+}
+
+function numberInput(value: number | null): string {
+  return value === null ? "" : String(value);
+}
+
+function durationInput(value: number | null): string {
+  return value === null ? "" : formatDuration(value);
 }
