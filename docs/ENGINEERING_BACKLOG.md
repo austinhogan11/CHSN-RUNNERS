@@ -31,7 +31,7 @@ The detailed sections below remain the source of scope and acceptance criteria.
 | ENG-001 | P0 | Support Empty Training Weeks | ✅ Done |
 | ENG-002 | P0 | Use Runner Local Calendar Date | ✅ Done |
 | ENG-003 | P1 | Define Workout Domain Invariants | ✅ Done |
-| ENG-004 | P1 | Add Authentication and Workout Ownership | ⏳ Pending |
+| ENG-004 | P1 | Add Authentication and Workout Ownership | ✅ Done |
 | ENG-005 | P1 | Separate PR Planning Authority From Production AWS Mutation | ⏳ Pending |
 | ENG-006 | P1 | Make Infrastructure Bootstrap/Recreation Reproducible | ⏳ Pending |
 | ENG-007 | P2 | Preserve `/api` Routing Context in Generated URLs | ⏳ Pending |
@@ -251,6 +251,22 @@ Define:
 ---
 
 ## ENG-004 — Add Authentication and Workout Ownership
+
+**Status:** ✅ Done — completed on `feat/clerk-auth`.
+
+The React app uses Clerk with Google as the initial sign-in provider. Signed-out
+visitors see the Runner sign-in flow, while signed-in sessions attach a Clerk
+session token to API requests. Apple sign-in remains a future provider option.
+
+FastAPI verifies Clerk-issued RS256 tokens through the configured issuer and
+JWKS, including expiry, not-before, and authorized-party checks. Protected read
+routes receive a provider-neutral `CurrentUser` and use the verified `sub` claim
+as the DynamoDB `user_id`; ownership does not depend on whether the user signed
+in with Google or another social provider.
+
+The former `runner-v1-default-user` production fallback has been removed. Demo
+records can be explicitly and repeatably reassigned to a real Clerk user ID with
+the existing seed command. Write APIs and their ownership checks remain deferred.
 
 **Category:** Security / product architecture  
 **Timing:** Before storing meaningful private workout data
@@ -926,9 +942,10 @@ routes use the DynamoDB repository; local development and tests use the same
 domain behavior through an in-memory repository. Demo data is populated only by
 an explicit, repeatable seed command.
 
-Records are partitioned by a temporary configured default user for this
-read-only slice. ENG-004 remains pending; authenticated ownership and all write
-APIs are part of the next product work.
+Records are partitioned by the verified session token subject. Existing demo
+records require the explicit reseed command after the first Clerk sign-in.
+Authenticated ownership for future write APIs remains part of the next product
+work.
 
 ## Product 3 — Create / Edit / Log Workouts
 

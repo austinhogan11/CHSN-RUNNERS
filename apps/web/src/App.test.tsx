@@ -1,7 +1,23 @@
+import type { ReactNode } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+
+const clerk = vi.hoisted(() => ({
+  getToken: vi.fn(() => Promise.resolve<string | null>("session-token")),
+  signedIn: true,
+}));
+
+vi.mock("@clerk/react", () => ({
+  Show: ({ children, when }: { children: ReactNode; when: "signed-in" | "signed-out" }) => {
+    const visible = when === "signed-in" ? clerk.signedIn : !clerk.signedIn;
+    return visible ? children : null;
+  },
+  SignIn: () => <div aria-label="Clerk sign in">Google sign in</div>,
+  UserButton: () => <button aria-label="Account menu">Account</button>,
+  useAuth: () => ({ getToken: clerk.getToken }),
+}));
 
 const weekResponse = {
   week_start: "2026-09-14",
@@ -49,6 +65,9 @@ const trendResponse = [
 ];
 
 afterEach(() => {
+  clerk.signedIn = true;
+  clerk.getToken.mockReset();
+  clerk.getToken.mockResolvedValue("session-token");
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -56,6 +75,19 @@ afterEach(() => {
 });
 
 describe("App", () => {
+  it("shows the Runner sign-in experience while signed out", () => {
+    clerk.signedIn = false;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "Sign in to Runner" })).toBeInTheDocument();
+    expect(screen.getByText("Continue with Google to view your training.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Clerk sign in")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("shows loading state while dashboard data is being fetched", () => {
     vi.stubGlobal(
       "fetch",
@@ -67,6 +99,7 @@ describe("App", () => {
     expect(
       screen.getByText("Loading dashboard..."),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Account menu" })).toBeInTheDocument();
   });
 
   it("shows the mileage trend and current week", async () => {
@@ -109,6 +142,11 @@ describe("App", () => {
     expect(summary.getByText("30.00 mi")).toBeInTheDocument();
     expect(summary.getByText("5.10 mi")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Planned and actual weekly mileage/ })).toBeInTheDocument();
+    expect(clerk.getToken).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/(weeks|trends\/mileage)/),
+      { headers: { Authorization: "Bearer session-token" } },
+    );
   });
 
   it("renders an empty week while keeping the mileage trend visible", async () => {
@@ -176,8 +214,9 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "This Week" }),
     ).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(`/api/weeks/${day}`);
-    expect(fetchMock).toHaveBeenCalledWith(`/api/trends/mileage?end=${day}&weeks=12`);
+    const options = { headers: { Authorization: "Bearer session-token" } };
+    expect(fetchMock).toHaveBeenCalledWith(`/api/weeks/${day}`, options);
+    expect(fetchMock).toHaveBeenCalledWith(`/api/trends/mileage?end=${day}&weeks=12`, options);
   });
 
   it("shows an error when dashboard data cannot be loaded", async () => {

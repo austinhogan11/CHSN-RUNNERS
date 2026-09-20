@@ -1,0 +1,2 @@
+clerk_issuer             = "https://your-instance.clerk.accounts.dev"
+clerk_authorized_parties = "https://your-cloudfront-domain.example"

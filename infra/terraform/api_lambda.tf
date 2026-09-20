@@ -50,10 +50,11 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      ENVIRONMENT             = "production"
-      WORKOUT_DEFAULT_USER_ID = "runner-v1-default-user"
-      WORKOUT_REPOSITORY      = "dynamodb"
-      WORKOUT_TABLE_NAME      = aws_dynamodb_table.workouts.name
+      CLERK_AUTHORIZED_PARTIES = var.clerk_authorized_parties
+      CLERK_ISSUER             = var.clerk_issuer
+      ENVIRONMENT              = "production"
+      WORKOUT_REPOSITORY       = "dynamodb"
+      WORKOUT_TABLE_NAME       = aws_dynamodb_table.workouts.name
     }
   }
 

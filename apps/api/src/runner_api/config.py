@@ -10,8 +10,10 @@ class Settings(BaseSettings):
     debug: bool = False
     workout_repository: Literal["memory", "dynamodb"] = "memory"
     workout_table_name: str | None = None
-    # Temporary single-user identity until authentication supplies request ownership.
-    workout_default_user_id: str = "local-development-user"
+    workout_demo_user_id: str = "local-development-user"
+    clerk_issuer: str | None = None
+    clerk_jwks_url: str | None = None
+    clerk_authorized_parties: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
