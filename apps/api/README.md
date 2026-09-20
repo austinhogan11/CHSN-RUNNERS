@@ -32,3 +32,15 @@ uv run python scripts/seed_workouts.py \
 The script uses the existing stable workout IDs, so each `PutItem` replaces that
 item's old ownership and GSI key instead of creating duplicates. Rerunning it is
 safe. Deployment does not run this command automatically.
+
+## Workout mutations
+
+Authenticated clients can create, partially update, and delete sessions through
+`POST /workouts`, `PATCH /workouts/{id}`, and `DELETE /workouts/{id}`. The API
+derives ownership only from the verified `CurrentUser`; mutation payloads cannot
+set IDs, ownership, timestamps, or derived pace.
+
+PATCH leaves omitted fields unchanged and clears nullable fields that are
+explicitly sent as `null`. DynamoDB removes cleared optional attributes instead
+of storing `NULL` values. Missing IDs and IDs owned by another user both return
+`404` so the API does not reveal another user's workout IDs.

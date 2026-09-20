@@ -266,7 +266,8 @@ in with Google or another social provider.
 
 The former `runner-v1-default-user` production fallback has been removed. Demo
 records can be explicitly and repeatably reassigned to a real Clerk user ID with
-the existing seed command. Write APIs and their ownership checks remain deferred.
+the existing seed command. Authenticated create, partial update, and delete APIs
+enforce the same token-derived ownership.
 
 **Category:** Security / product architecture  
 **Timing:** Before storing meaningful private workout data
@@ -948,6 +949,13 @@ Authenticated ownership for future write APIs remains part of the next product
 work.
 
 ## Product 3 — Create / Edit / Log Workouts
+
+**Status:** 🚧 In Progress — authenticated workout mutation API complete on
+`feat/workout-write-api`; frontend editing remains deferred.
+
+The backend now supports authenticated create, partial update, and delete for
+workout sessions. IDs and UTC timestamps are server-managed, DynamoDB writes are
+conditional, and missing or cross-user IDs share non-leaky `404` behavior.
 
 Support the primary workflow:
 
