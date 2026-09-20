@@ -124,13 +124,6 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
             onSave={(value) => onUpdate(workout.id, { title: value })}
             className={`editable-title${workout.title ? "" : " empty-value"}`}
           />
-          <InlineSelectField
-            label="Type"
-            value={workout.type}
-            options={typeOptions}
-            onSave={(value) => onUpdate(workout.id, { type: value })}
-            className="workout-type editable-type"
-          />
         </div>
         <InlineInputField
           label="Description"
@@ -141,6 +134,14 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
           className={`editable-note${workout.description ? "" : " empty-value"}`}
         />
       </div>
+
+      <InlineSelectField
+        label="Type"
+        value={workout.type}
+        options={typeOptions}
+        onSave={(value) => onUpdate(workout.id, { type: value })}
+        className="workout-type editable-type"
+      />
 
       <InlineSelectField
         label="Status"
@@ -161,29 +162,26 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
           <InlineInputField label="Duration" displayValue={formatDuration(workout.duration_seconds)} editValue={durationInput(workout.duration_seconds)} parse={parseDurationInput} onSave={(value) => onUpdate(workout.id, { duration_seconds: value })} inputMode="numeric" placeholder="MM:SS" />
         </Metric>
         <Metric label="Start">
-          <InlineInputField label="Start time" displayValue={workout.start_time?.slice(0, 5) ?? "—"} editValue={workout.start_time ?? ""} parse={parseNullableText} onSave={(value) => onUpdate(workout.id, { start_time: value })} inputType="time" step="1" />
+          <InlineInputField label="Start time" displayValue={formatStartTime(workout.start_time)} editValue={workout.start_time ?? ""} parse={parseNullableText} onSave={(value) => onUpdate(workout.id, { start_time: value })} inputType="time" step="1" />
         </Metric>
         <Metric label="Avg. pace">
           {formatPace(calculateAveragePaceSeconds(workout.duration_seconds, workout.distance))}
         </Metric>
       </dl>
 
-      <div className={`session-actions${confirmingDelete ? " is-confirming" : ""}`}>
+      <div className="session-actions">
         {!confirmingDelete ? (
-          <details className="session-overflow">
-            <summary aria-label={`Actions for ${title}`}>⋯</summary>
-            <div className="session-menu">
-              <button className="text-button danger-button" type="button" onClick={() => setConfirmingDelete(true)}>Delete session</button>
-            </div>
-          </details>
+          <button className="delete-session-button" type="button" aria-label={`Delete ${title}`} onClick={() => setConfirmingDelete(true)}>×</button>
         ) : (
-          <div className="delete-confirmation" role="group" aria-label={`Delete ${title}`}>
+          <div className="delete-confirmation" role="group" aria-label={`Delete ${title}`} onKeyDown={(event) => {
+            if (event.key === "Escape" && !isDeleting) setConfirmingDelete(false);
+          }}>
             <span>Delete this session?</span>
-            <button className="text-button danger-button" type="button" disabled={isDeleting} onClick={handleDelete}>{isDeleting ? "Deleting..." : "Confirm delete"}</button>
-            <button className="text-button" type="button" disabled={isDeleting} onClick={() => setConfirmingDelete(false)}>Keep session</button>
+            <button autoFocus className="text-button danger-button" type="button" disabled={isDeleting} onClick={handleDelete}>{isDeleting ? "Deleting..." : "Confirm"}</button>
+            <button className="text-button" type="button" disabled={isDeleting} onClick={() => setConfirmingDelete(false)}>Cancel</button>
+            {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
           </div>
         )}
-        {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
       </div>
     </article>
   );
@@ -222,4 +220,12 @@ function numberInput(value: number | null): string {
 
 function durationInput(value: number | null): string {
   return value === null ? "" : formatDuration(value);
+}
+
+function formatStartTime(value: string | null): string {
+  if (!value) return "—";
+  const [hoursPart, minutes = "00"] = value.split(":");
+  const hours = Number(hoursPart);
+  if (!Number.isInteger(hours) || hours < 0 || hours > 23) return value.slice(0, 5);
+  return `${hours % 12 || 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
 }

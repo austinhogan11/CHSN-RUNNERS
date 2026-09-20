@@ -105,7 +105,7 @@ describe("WorkoutList presentation", () => {
     const row = within(screen.getByRole("article", { name: "Rest on 2026-09-18" }));
     expect(row.getByRole("combobox", { name: "Edit Type" })).toHaveValue("rest");
     expect(row.getByRole("combobox", { name: "Edit Status" })).toHaveValue("skipped");
-    expect(row.getByLabelText("Actions for Rest")).toBeInTheDocument();
+    expect(row.getByRole("button", { name: "Delete Rest" })).toHaveTextContent("×");
   });
 
   it("identifies today using the local calendar date", () => {
@@ -113,7 +113,7 @@ describe("WorkoutList presentation", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-09-19T01:00:00Z"));
     renderList();
-    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Today").closest("li")).toHaveClass("is-today");
   });
 });
 
@@ -253,6 +253,7 @@ describe("direct field editing", () => {
 
     const clearUpdate = vi.fn(async () => {});
     renderList([{ ...workout, start_time: "06:30:00" }], clearUpdate);
+    expect(screen.getByRole("button", { name: "Edit Start time" })).toHaveTextContent("6:30 AM");
     edit("Start time");
     const existing = screen.getByLabelText("Start time");
     fireEvent.change(existing, { target: { value: "" } });
@@ -307,13 +308,25 @@ describe("compact session actions", () => {
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith({ date: "2026-09-15", type: "strength", title: "Gym", planned_distance: 2.5 }));
   });
 
-  it("requires overflow confirmation and restores Rest after deleting the final session", async () => {
+  it("uses a direct delete control, requires confirmation, and restores Rest", async () => {
     render(<StatefulList />);
-    fireEvent.click(screen.getByLabelText("Actions for Easy Run"));
-    fireEvent.click(screen.getByRole("button", { name: "Delete session" }));
+    const deleteButton = screen.getByRole("button", { name: "Delete Easy Run" });
+    expect(deleteButton).toHaveTextContent("×");
+    expect(screen.queryByText("⋯")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Actions for Easy Run")).not.toBeInTheDocument();
+    fireEvent.click(deleteButton);
+    expect(screen.getByRole("article", { name: "Easy Run on 2026-09-18" })).toBeInTheDocument();
     const confirmation = screen.getByRole("group", { name: "Delete Easy Run" });
     expect(within(confirmation).getByText("Delete this session?")).toBeInTheDocument();
-    fireEvent.click(within(confirmation).getByRole("button", { name: "Confirm delete" }));
+    fireEvent.click(within(confirmation).getByRole("button", { name: "Confirm" }));
     expect(await screen.findByRole("article", { name: "Rest on 2026-09-18" })).toBeInTheDocument();
+  });
+
+  it("cancels direct delete confirmation with Escape", () => {
+    renderList();
+    fireEvent.click(screen.getByRole("button", { name: "Delete Easy Run" }));
+    const confirmation = screen.getByRole("group", { name: "Delete Easy Run" });
+    fireEvent.keyDown(within(confirmation).getByRole("button", { name: "Confirm" }), { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Delete Easy Run" })).toBeInTheDocument();
   });
 });
