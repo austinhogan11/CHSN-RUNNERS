@@ -52,6 +52,18 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
         </span>
       </div>
 
+      <div className="workout-table-header">
+        <span>Date</span>
+        <span>Type</span>
+        <span>Title</span>
+        <span>Description</span>
+        <span>Start</span>
+        <span>Duration</span>
+        <span>Pace</span>
+        <span>Planned</span>
+        <span>Actual</span>
+        <span>Delete</span>
+      </div>
       <ul className="workout-list">
         {getWeekDates(weekStart).map((day) => {
           const dayWorkouts = workoutsByDate.get(day) ?? [];
@@ -62,7 +74,7 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
               <div className="day-sessions">
                 {dayWorkouts.length === 0 && (
                   <article className="session-row rest-row" aria-label={`Rest on ${day}`}>
-                    <div className="workout-info"><div className="workout-title"><h3>Rest</h3></div></div>
+                    <h3>Rest</h3>
                   </article>
                 )}
                 {dayWorkouts.map((workout) => (
@@ -103,17 +115,26 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
 
   return (
     <article className="session-row" aria-label={`${title} on ${workout.date}`}>
-      <div className="workout-info">
-        <div className="workout-title">
-          <InlineInputField
-            label="Title"
-            displayValue={workout.title ?? "Add title"}
-            editValue={workout.title ?? ""}
-            parse={parseNullableText}
-            onSave={(value) => onUpdate(workout.id, { title: value })}
-            className={`editable-title${workout.title ? "" : " empty-value"}`}
-          />
-        </div>
+      <InlineSelectField
+        label="Type"
+        value={workout.type}
+        options={typeOptions}
+        onSave={(value) => onUpdate(workout.id, { type: value })}
+        className="workout-type editable-type"
+      />
+
+      <div className="workout-title-cell">
+        <InlineInputField
+          label="Title"
+          displayValue={workout.title ?? "Add title"}
+          editValue={workout.title ?? ""}
+          parse={parseNullableText}
+          onSave={(value) => onUpdate(workout.id, { title: value })}
+          className={`editable-title${workout.title ? "" : " empty-value"}`}
+        />
+      </div>
+
+      <div className="workout-description-cell">
         <InlineInputField
           label="Description"
           displayValue={workout.description ?? "Add note"}
@@ -124,31 +145,21 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
         />
       </div>
 
-      <InlineSelectField
-        label="Type"
-        value={workout.type}
-        options={typeOptions}
-        onSave={(value) => onUpdate(workout.id, { type: value })}
-        className="workout-type editable-type"
-      />
-
-      <dl className="workout-metrics">
-        <Metric label="Planned">
-          <InlineInputField label="Planned miles" displayValue={formatDistance(workout.planned_distance)} editValue={numberInput(workout.planned_distance)} parse={parseNullableDistance} onSave={(value) => onUpdate(workout.id, { planned_distance: value })} inputType="number" inputMode="decimal" min="0" step="any" unit="mi" />
-        </Metric>
-        <Metric label="Actual">
-          <InlineInputField label="Actual miles" displayValue={formatDistance(workout.distance)} editValue={numberInput(workout.distance)} parse={parseNullableDistance} onSave={(value) => onUpdate(workout.id, { distance: value })} inputType="number" inputMode="decimal" min="0" step="any" unit="mi" />
-        </Metric>
-        <Metric label="Duration">
-          <InlineInputField label="Duration" displayValue={formatDuration(workout.duration_seconds)} editValue={durationInput(workout.duration_seconds)} parse={parseDurationInput} onSave={(value) => onUpdate(workout.id, { duration_seconds: value })} inputMode="numeric" placeholder="MM:SS" />
-        </Metric>
-        <Metric label="Start">
-          <InlineInputField label="Start time" displayValue={formatStartTime(workout.start_time)} editValue={workout.start_time ?? ""} parse={parseNullableText} onSave={(value) => onUpdate(workout.id, { start_time: value })} inputType="time" step="1" />
-        </Metric>
-        <Metric label="Avg. pace">
-          {formatPace(calculateAveragePaceSeconds(workout.duration_seconds, workout.distance))}
-        </Metric>
-      </dl>
+      <div className="workout-metric workout-start">
+        <InlineInputField label="Start time" displayValue={formatStartTime(workout.start_time)} editValue={workout.start_time ?? ""} parse={parseNullableText} onSave={(value) => onUpdate(workout.id, { start_time: value })} inputType="time" step="1" />
+      </div>
+      <div className="workout-metric workout-duration">
+        <InlineInputField label="Duration" displayValue={formatDuration(workout.duration_seconds)} editValue={durationInput(workout.duration_seconds)} parse={parseDurationInput} onSave={(value) => onUpdate(workout.id, { duration_seconds: value })} inputMode="numeric" placeholder="MM:SS" />
+      </div>
+      <div className="workout-metric workout-pace" aria-label="Average pace">
+        {formatPace(calculateAveragePaceSeconds(workout.duration_seconds, workout.distance))}
+      </div>
+      <div className="workout-metric workout-planned">
+        <InlineInputField label="Planned miles" displayValue={formatDistance(workout.planned_distance)} editValue={numberInput(workout.planned_distance)} parse={parseNullableDistance} onSave={(value) => onUpdate(workout.id, { planned_distance: value })} inputType="number" inputMode="decimal" min="0" step="any" unit="mi" />
+      </div>
+      <div className="workout-metric workout-actual">
+        <InlineInputField label="Actual miles" displayValue={formatDistance(workout.distance)} editValue={numberInput(workout.distance)} parse={parseNullableDistance} onSave={(value) => onUpdate(workout.id, { distance: value })} inputType="number" inputMode="decimal" min="0" step="any" unit="mi" />
+      </div>
 
       <div className="session-actions">
         {!confirmingDelete ? (
@@ -166,10 +177,6 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
       </div>
     </article>
   );
-}
-
-function Metric({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><dt>{label}</dt><dd>{children}</dd></div>;
 }
 
 function WorkoutDate({ day, isToday }: { day: string; isToday: boolean }) {

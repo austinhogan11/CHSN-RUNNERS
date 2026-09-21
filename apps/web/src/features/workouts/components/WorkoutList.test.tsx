@@ -62,8 +62,22 @@ afterEach(() => {
 
 describe("WorkoutList presentation", () => {
   it("renders seven days, real workouts, rest days, and date-specific add controls", () => {
-    renderList();
+    const { container } = renderList();
 
+    const header = container.querySelector(".workout-table-header");
+    expect(header).not.toBeNull();
+    expect(Array.from(header?.children ?? []).map((cell) => cell.textContent)).toEqual([
+      "Date",
+      "Type",
+      "Title",
+      "Description",
+      "Start",
+      "Duration",
+      "Pace",
+      "Planned",
+      "Actual",
+      "Delete",
+    ]);
     expect(screen.getAllByRole("listitem")).toHaveLength(7);
     expect(screen.getAllByRole("button", { name: /Add session on/ })).toHaveLength(7);
     expect(screen.getAllByRole("article")).toHaveLength(7);
@@ -84,7 +98,7 @@ describe("WorkoutList presentation", () => {
 
   it("preserves multiple sessions on one date and edits only the selected session", async () => {
     const onUpdate = vi.fn();
-    render(
+    const { container } = render(
       <StatefulList
         initial={[{ ...workout, id: "run-am", title: "Morning Run" }, { ...workout, id: "strength-pm", type: "strength", title: "Gym" }]}
         onUpdate={onUpdate}
@@ -98,6 +112,7 @@ describe("WorkoutList presentation", () => {
     await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-am", { title: "Recovery Run" }));
     expect(screen.getByRole("article", { name: "Gym on 2026-09-18" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Add session on 2026-09-18/ })).toHaveLength(1);
+    expect(container.querySelectorAll('time[datetime="2026-09-18"]')).toHaveLength(1);
   });
 
   it("renders an explicit rest session as an editable persisted workout", () => {
