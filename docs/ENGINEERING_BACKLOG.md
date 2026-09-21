@@ -971,6 +971,11 @@ totals immediately and refresh week and trend data. Multiple same-day sessions a
 presentation-only Rest days remain supported. A V2-inspired Product 3 refinement
 adds a single table header and stable date, type, title, description, start, duration,
 pace, planned, actual, and delete columns while retaining the simpler V1 domain.
+A compact follow-up tightens real and presentation-only Rest rows, aligns destructive
+actions, and restores the Volt-on-black theme with Crimson reserved for errors and
+deletion. New sessions default start time from the browser's local clock. Supplying
+duration during creation copies the entered planned distance to actual distance for
+immediate completion and derived pace; omitting duration leaves execution values null.
 Week navigation remains deferred.
 
 Support the primary workflow:
