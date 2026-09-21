@@ -968,7 +968,10 @@ Persisted status remains in the API and storage model for compatibility, is norm
 when execution data changes, and does not control weekly or trend aggregation. The
 primary UI no longer exposes a status control. Successful mutations update weekly
 totals immediately and refresh week and trend data. Multiple same-day sessions and
-presentation-only Rest days remain supported. Week navigation remains deferred.
+presentation-only Rest days remain supported. A V2-inspired Product 3 refinement
+adds a single table header and stable date, type, title, description, start, duration,
+pace, planned, actual, and delete columns while retaining the simpler V1 domain.
+Week navigation remains deferred.
 
 Support the primary workflow:
 
