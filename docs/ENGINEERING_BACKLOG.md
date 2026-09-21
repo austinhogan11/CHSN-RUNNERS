@@ -957,15 +957,18 @@ work.
 The backend supports authenticated create, partial update, and delete for workout
 sessions. The weekly dashboard now provides date-specific session creation and
 direct field editing in each session row. Text and numeric fields save independently,
-type and status selections save immediately, pace stays derived, and deletion remains
-confirmed behind a compact action menu. A follow-up Product 3 polish pass keeps the
-type and status selectors actionable on the first click, stabilizes inline editor
-dimensions, and presents session creation as a compact insertion row. The approved
-table refinement separates title, type, status, and metric columns, restores the
-acid-lime Runner palette, and replaces the overflow menu with a direct confirmed
-delete control. Successful mutations update weekly totals immediately and refresh
-week and trend data. Multiple same-day sessions and presentation-only Rest days
-remain supported. Week navigation remains deferred.
+type selections save immediately, pace stays derived, and deletion remains confirmed
+behind a compact action menu. A follow-up Product 3 polish pass keeps the type selector
+actionable on the first click, stabilizes inline editor dimensions, and presents
+session creation as a compact insertion row. The approved table refinement separates
+title, type, and metric columns, restores the acid-lime Runner palette, and replaces
+the overflow menu with a direct confirmed delete control. Completion is inferred from
+non-null actual distance or duration; clearing both returns a session to planned.
+Persisted status remains in the API and storage model for compatibility, is normalized
+when execution data changes, and does not control weekly or trend aggregation. The
+primary UI no longer exposes a status control. Successful mutations update weekly
+totals immediately and refresh week and trend data. Multiple same-day sessions and
+presentation-only Rest days remain supported. Week navigation remains deferred.
 
 Support the primary workflow:
 
@@ -973,7 +976,6 @@ Support the primary workflow:
 planned workout
 → perform run
 → enter execution data
-→ mark completed
 → weekly actual mileage updates
 → trend updates automatically
 ```
