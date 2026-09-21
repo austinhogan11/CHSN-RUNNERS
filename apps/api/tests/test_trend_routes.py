@@ -127,7 +127,7 @@ def test_get_mileage_trend_uses_one_repository_query_for_the_full_range() -> Non
                         date=date(2026, 9, 8),
                         planned_distance=4,
                         distance=4.2,
-                        status=WorkoutStatus.COMPLETED,
+                        status=WorkoutStatus.PLANNED,
                     )
                 ],
                 user_id=user_id,

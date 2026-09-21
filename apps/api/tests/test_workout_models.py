@@ -10,6 +10,8 @@ from runner_api.models.workout import (
     WorkoutStatus,
     WorkoutType,
     calculate_average_pace_seconds,
+    completion_status,
+    has_actual_execution,
 )
 
 
@@ -78,6 +80,25 @@ def test_statuses_do_not_require_or_forbid_execution_data(
 
     assert workout.status == status
     assert workout.distance == distance
+
+
+@pytest.mark.parametrize(
+    ("distance", "duration_seconds", "executed", "status"),
+    [
+        (None, None, False, WorkoutStatus.PLANNED),
+        (5.0, None, True, WorkoutStatus.COMPLETED),
+        (None, 2400, True, WorkoutStatus.COMPLETED),
+        (0.0, 0, True, WorkoutStatus.COMPLETED),
+    ],
+)
+def test_completion_is_inferred_from_execution_data(
+    distance: float | None,
+    duration_seconds: int | None,
+    executed: bool,
+    status: WorkoutStatus,
+) -> None:
+    assert has_actual_execution(distance, duration_seconds) is executed
+    assert completion_status(distance, duration_seconds) == status
 
 
 def test_explicit_rest_session_is_valid() -> None:

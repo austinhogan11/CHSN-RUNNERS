@@ -59,14 +59,14 @@ def test_get_week_counts_multiple_same_day_sessions_without_overwriting() -> Non
             date=date(2026, 9, 14),
             planned_distance=5,
             distance=5.1,
-            status=WorkoutStatus.COMPLETED,
+            status=WorkoutStatus.PLANNED,
         ),
         Workout(
             id="double-2",
             date=date(2026, 9, 14),
             planned_distance=3,
             distance=3.2,
-            status=WorkoutStatus.COMPLETED,
+            status=WorkoutStatus.SKIPPED,
         ),
         Workout(
             id="strength-1",

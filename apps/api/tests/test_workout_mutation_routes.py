@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from runner_api.auth import CurrentUser, get_current_user
 from runner_api.dependencies import get_workout_repository
 from runner_api.main import app
-from runner_api.models.workout import Workout
+from runner_api.models.workout import Workout, WorkoutStatus
 from runner_api.repositories.workouts import (
     InMemoryWorkoutRepository,
     WorkoutNotFoundError,
@@ -44,6 +44,9 @@ def seed_workout(
     title: str | None = "Easy Run",
     description: str | None = "Keep it conversational",
     planned_distance: float | None = 5.0,
+    distance: float | None = None,
+    duration_seconds: int | None = None,
+    status: WorkoutStatus = WorkoutStatus.PLANNED,
 ) -> Workout:
     workout = Workout(
         id=workout_id,
@@ -51,6 +54,9 @@ def seed_workout(
         title=title,
         description=description,
         planned_distance=planned_distance,
+        distance=distance,
+        duration_seconds=duration_seconds,
+        status=status,
     )
     timestamp = datetime(2026, 9, 1, tzinfo=UTC)
     repository.create(workout, user_id, timestamp, timestamp)
@@ -95,6 +101,24 @@ def test_create_accepts_full_permissive_workout_contract() -> None:
     assert response.status_code == 201
     assert response.json()["type"] == "cross_training"
     assert response.json()["distance"] == 18.5
+
+
+@pytest.mark.parametrize(
+    ("execution", "expected_field"),
+    [({"distance": 7.0}, "distance"), ({"duration_seconds": 2700}, "duration_seconds")],
+)
+def test_create_infers_completion_without_client_status(
+    execution: dict[str, float | int],
+    expected_field: str,
+) -> None:
+    response = client.post(
+        "/workouts",
+        json={"date": "2026-09-22", **execution},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "completed"
+    assert response.json()[expected_field] == execution[expected_field]
 
 
 def test_create_requires_date() -> None:
@@ -164,6 +188,75 @@ def test_patch_updates_planned_distance(
 
     assert response.status_code == 200
     assert response.json()["planned_distance"] == 6.5
+
+
+@pytest.mark.parametrize(
+    ("changes", "field", "value"),
+    [
+        ({"distance": 5.2}, "distance", 5.2),
+        ({"duration_seconds": 2500}, "duration_seconds", 2500),
+    ],
+)
+def test_patch_execution_data_infers_completion_without_client_status(
+    repository: InMemoryWorkoutRepository,
+    changes: dict[str, float | int],
+    field: str,
+    value: float,
+) -> None:
+    seed_workout(repository)
+
+    response = client.patch("/workouts/workout-1", json=changes)
+
+    assert response.status_code == 200
+    assert response.json()[field] == value
+    assert response.json()["status"] == "completed"
+
+
+def test_clearing_one_execution_field_keeps_completion(
+    repository: InMemoryWorkoutRepository,
+) -> None:
+    seed_workout(
+        repository,
+        distance=5.2,
+        duration_seconds=2500,
+        status=WorkoutStatus.COMPLETED,
+    )
+
+    distance_response = client.patch("/workouts/workout-1", json={"distance": None})
+    assert distance_response.status_code == 200
+    assert distance_response.json()["status"] == "completed"
+
+    seed_workout(
+        repository,
+        workout_id="workout-2",
+        distance=5.2,
+        duration_seconds=2500,
+        status=WorkoutStatus.COMPLETED,
+    )
+    duration_response = client.patch(
+        "/workouts/workout-2",
+        json={"duration_seconds": None},
+    )
+    assert duration_response.status_code == 200
+    assert duration_response.json()["status"] == "completed"
+
+
+def test_clearing_all_execution_data_returns_to_planned(
+    repository: InMemoryWorkoutRepository,
+) -> None:
+    seed_workout(
+        repository,
+        distance=5.2,
+        duration_seconds=2500,
+        status=WorkoutStatus.COMPLETED,
+    )
+
+    first = client.patch("/workouts/workout-1", json={"distance": None})
+    second = client.patch("/workouts/workout-1", json={"duration_seconds": None})
+
+    assert first.json()["status"] == "completed"
+    assert second.status_code == 200
+    assert second.json()["status"] == "planned"
 
 
 def test_patch_explicit_null_clears_nullable_field(

@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from runner_api.auth import CurrentUser, get_current_user
 from runner_api.dependencies import get_workout_repository
-from runner_api.models.workout import Workout, WorkoutCreate, WorkoutUpdate
+from runner_api.models.workout import (
+    Workout,
+    WorkoutCreate,
+    WorkoutUpdate,
+    completion_status,
+)
 from runner_api.repositories.workouts import (
     WorkoutAlreadyExistsError,
     WorkoutNotFoundError,
@@ -22,9 +27,14 @@ def create_workout(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     repository: Annotated[WorkoutRepository, Depends(get_workout_repository)],
 ) -> Workout:
+    values = payload.model_dump()
+    values["status"] = completion_status(
+        payload.distance,
+        payload.duration_seconds,
+    )
     workout = Workout(
         id=str(uuid4()),
-        **payload.model_dump(),
+        **values,
     )
     now = datetime.now(UTC)
 
@@ -53,11 +63,18 @@ def update_workout(
     if record is None or record.user_id != current_user.id:
         raise _workout_not_found()
 
+    changes = payload.model_dump(mode="json", exclude_unset=True)
+    if "distance" in changes or "duration_seconds" in changes:
+        changes["status"] = completion_status(
+            changes.get("distance", record.workout.distance),
+            changes.get("duration_seconds", record.workout.duration_seconds),
+        ).value
+
     try:
         return repository.update(
             workout_id=workout_id,
             user_id=current_user.id,
-            changes=payload.model_dump(mode="json", exclude_unset=True),
+            changes=changes,
             updated_at=datetime.now(UTC),
         )
     except WorkoutNotFoundError as error:

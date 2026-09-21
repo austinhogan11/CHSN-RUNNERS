@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 
 from runner_api.auth import CurrentUser, get_current_user
 from runner_api.dependencies import get_workout_repository
-from runner_api.models.workout import WeekSummary, WorkoutStatus
+from runner_api.models.workout import WeekSummary, has_actual_execution
 from runner_api.repositories.workouts import WorkoutRepository
 
 router = APIRouter(prefix="/weeks", tags=["weeks"])
@@ -35,7 +35,7 @@ def get_week(
     actual_distance = sum(
         workout.distance or 0
         for workout in workouts
-        if workout.status == WorkoutStatus.COMPLETED
+        if has_actual_execution(workout.distance, workout.duration_seconds)
     )
 
     return WeekSummary(
