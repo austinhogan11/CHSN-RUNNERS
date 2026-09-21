@@ -76,7 +76,7 @@ describe("WorkoutList presentation", () => {
       "Pace",
       "Planned",
       "Actual",
-      "Delete",
+      "",
     ]);
     expect(header?.lastElementChild).toHaveClass("workout-delete-heading");
     expect(screen.getAllByRole("listitem")).toHaveLength(7);

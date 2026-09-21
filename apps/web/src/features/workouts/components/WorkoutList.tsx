@@ -62,7 +62,7 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
         <span>Pace</span>
         <span>Planned</span>
         <span>Actual</span>
-        <span className="workout-delete-heading">Delete</span>
+        <span className="workout-delete-heading" aria-hidden="true" />
       </div>
       <ul className="workout-list">
         {getWeekDates(weekStart).map((day) => {
