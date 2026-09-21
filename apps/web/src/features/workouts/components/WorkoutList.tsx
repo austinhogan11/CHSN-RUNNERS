@@ -62,7 +62,7 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
         <span>Pace</span>
         <span>Planned</span>
         <span>Actual</span>
-        <span>Delete</span>
+        <span className="workout-delete-heading">Delete</span>
       </div>
       <ul className="workout-list">
         {getWeekDates(weekStart).map((day) => {
@@ -71,7 +71,7 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
           return (
             <li className={`workout-day${isToday ? " is-today" : ""}`} key={day}>
               <WorkoutDate day={day} isToday={isToday} />
-              <div className="day-sessions">
+              <div className={`day-sessions${dayWorkouts.length === 0 ? " is-empty" : ""}`}>
                 {dayWorkouts.length === 0 && (
                   <article className="session-row rest-row" aria-label={`Rest on ${day}`}>
                     <h3>Rest</h3>

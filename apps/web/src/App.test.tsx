@@ -195,6 +195,9 @@ describe("App", () => {
   });
 
   it("creates a session and refreshes the week totals and trend", async () => {
+    vi.stubEnv("TZ", "America/New_York");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-21T19:42:00Z"));
     const emptyWeek = {
       week_start: "2026-09-14",
       planned_distance: 0,
@@ -207,6 +210,7 @@ describe("App", () => {
       date: "2026-09-16",
       title: "Tempo Run",
       planned_distance: 6,
+      start_time: "15:42:00",
     };
     const refreshedWeek = {
       week_start: "2026-09-14",
@@ -231,10 +235,13 @@ describe("App", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Add session on 2026-09-16/ }));
     fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Tempo Run" } });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Planned miles" }), { target: { value: "6" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "6" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(await screen.findByRole("article", { name: "Tempo Run on 2026-09-16" })).toBeInTheDocument();
+    const row = within(await screen.findByRole("article", { name: "Tempo Run on 2026-09-16" }));
+    expect(row.getByRole("button", { name: "Edit Actual miles" })).toHaveTextContent("—");
+    expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("—");
+    expect(row.getByLabelText("Average pace")).toHaveTextContent("—");
     const summary = within(screen.getByRole("region", { name: "This Week" }));
     expect(summary.getByText("6.00 mi")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts", {
@@ -245,6 +252,81 @@ describe("App", () => {
       },
       body: JSON.stringify({
         date: "2026-09-16",
+        start_time: "15:42",
+        distance: null,
+        duration_seconds: null,
+        title: "Tempo Run",
+        planned_distance: 6,
+      }),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("creates completed mileage with duration and immediately derives pace", async () => {
+    vi.stubEnv("TZ", "America/New_York");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-21T19:42:00Z"));
+    const emptyWeek = {
+      week_start: "2026-09-14",
+      planned_distance: 0,
+      actual_distance: 0,
+      workouts: [],
+    };
+    const createdWorkout = {
+      ...weekResponse.workouts[1],
+      id: "workout-completed",
+      date: "2026-09-17",
+      title: "Tempo Run",
+      planned_distance: 6,
+      start_time: "15:42:00",
+      duration_seconds: 2400,
+      distance: 6,
+      status: "completed",
+    };
+    const refreshedWeek = {
+      week_start: "2026-09-14",
+      planned_distance: 6,
+      actual_distance: 6,
+      workouts: [createdWorkout],
+    };
+    const refreshedTrend = trendResponse.map((point) => (
+      point.week_start === "2026-09-14"
+        ? { ...point, planned_distance: 6, actual_distance: 6 }
+        : point
+    ));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => emptyWeek })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => trendResponse })
+      .mockResolvedValueOnce({ ok: true, status: 201, json: async () => createdWorkout })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshedWeek })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshedTrend });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add session on 2026-09-17" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Tempo Run" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "6" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Duration (optional)" }), { target: { value: "40:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    const row = within(await screen.findByRole("article", { name: "Tempo Run on 2026-09-17" }));
+    expect(row.getByRole("button", { name: "Edit Planned miles" })).toHaveTextContent("6.00 mi");
+    expect(row.getByRole("button", { name: "Edit Actual miles" })).toHaveTextContent("6.00 mi");
+    expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("40:00");
+    expect(row.getByLabelText("Average pace")).toHaveTextContent("6:40 /mi");
+    expect(within(screen.getByRole("region", { name: "This Week" })).getAllByText("6.00 mi")).toHaveLength(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer session-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        date: "2026-09-17",
+        start_time: "15:42",
+        distance: 6,
+        duration_seconds: 2400,
         title: "Tempo Run",
         planned_distance: 6,
       }),
@@ -322,7 +404,7 @@ describe("App", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Add session on 2026-09-17" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Steady Run" } });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Planned miles" }), { target: { value: "4" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "4" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
     expect(await screen.findByRole("article", { name: "Steady Run on 2026-09-17" })).toBeInTheDocument();

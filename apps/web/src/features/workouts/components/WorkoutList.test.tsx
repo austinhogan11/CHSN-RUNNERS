@@ -78,10 +78,12 @@ describe("WorkoutList presentation", () => {
       "Actual",
       "Delete",
     ]);
+    expect(header?.lastElementChild).toHaveClass("workout-delete-heading");
     expect(screen.getAllByRole("listitem")).toHaveLength(7);
     expect(screen.getAllByRole("button", { name: /Add session on/ })).toHaveLength(7);
     expect(screen.getAllByRole("article")).toHaveLength(7);
     const row = within(screen.getByRole("article", { name: "Easy Run on 2026-09-18" }));
+    expect(row.getByRole("button", { name: "Delete Easy Run" }).parentElement).toHaveClass("session-actions");
     expect(row.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     expect(row.getByRole("button", { name: "Edit Planned miles" })).toHaveTextContent("5.00 mi");
     expect(screen.getByText("Fri")).toBeInTheDocument();
@@ -94,6 +96,8 @@ describe("WorkoutList presentation", () => {
     expect(screen.getAllByRole("heading", { name: "Rest" })).toHaveLength(7);
     expect(screen.getByRole("article", { name: "Rest on 2026-09-14" })).toBeInTheDocument();
     expect(screen.getByRole("article", { name: "Rest on 2026-09-20" })).toBeInTheDocument();
+    const monday = screen.getByRole("article", { name: "Rest on 2026-09-14" }).closest("li");
+    expect(within(monday as HTMLElement).getByRole("button", { name: "Add session on 2026-09-14" })).toBeInTheDocument();
   });
 
   it("preserves multiple sessions on one date and edits only the selected session", async () => {
@@ -294,31 +298,70 @@ describe("direct field editing", () => {
 });
 
 describe("compact session actions", () => {
-  it("creates with only type, title, and planned fields and preserves run defaults", async () => {
+  it("keeps creation compact and defaults start time from the local clock", async () => {
+    vi.stubEnv("TZ", "America/New_York");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-21T19:42:00Z"));
     const onCreate = vi.fn(async () => {});
     render(<WorkoutList weekStart="2026-09-14" workouts={[]} onCreate={onCreate} onUpdate={noUpdate} onDelete={noDelete} />);
     fireEvent.click(screen.getByRole("button", { name: /Add session on 2026-09-16/ }));
     const addRow = screen.getByRole("form", { name: "New session on 2026-09-16" });
     expect(within(addRow).getByRole("combobox", { name: "Type" })).toHaveValue("run");
     expect(within(addRow).getByRole("textbox", { name: "Title" })).toHaveAttribute("placeholder", "Workout title...");
-    expect(within(addRow).getByRole("spinbutton", { name: "Planned miles" })).toHaveAttribute("placeholder", "5.0");
+    expect(within(addRow).getByRole("spinbutton", { name: "Distance" })).toHaveAttribute("placeholder", "5.0");
+    expect(within(addRow).getByRole("textbox", { name: "Duration (optional)" })).toHaveAttribute("placeholder", "MM:SS optional");
     expect(within(addRow).getByRole("button", { name: "Cancel adding session" })).toHaveTextContent("×");
     expect(screen.queryByLabelText("Actual miles")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Duration")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Start time")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Description")).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({ date: "2026-09-16" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({
+      date: "2026-09-16",
+      start_time: "15:42",
+      distance: null,
+      duration_seconds: null,
+    }));
   });
 
-  it("creates a useful non-default session", async () => {
+  it("creates a planned-only session with null execution values when duration is blank", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-21T12:05:00"));
     const onCreate = vi.fn(async () => {});
     render(<WorkoutList weekStart="2026-09-14" workouts={[]} onCreate={onCreate} onUpdate={noUpdate} onDelete={noDelete} />);
     fireEvent.click(screen.getByRole("button", { name: /Add session on 2026-09-15/ }));
     fireEvent.change(screen.getByRole("combobox", { name: "Type" }), { target: { value: "strength" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "  Gym  " } });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Planned miles" }), { target: { value: "2.5" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "2.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({ date: "2026-09-15", type: "strength", title: "Gym", planned_distance: 2.5 }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({
+      date: "2026-09-15",
+      type: "strength",
+      title: "Gym",
+      planned_distance: 2.5,
+      start_time: "12:05",
+      distance: null,
+      duration_seconds: null,
+    }));
+  });
+
+  it("copies distance into actual execution when duration is provided", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-21T06:30:00"));
+    const onCreate = vi.fn(async () => {});
+    render(<WorkoutList weekStart="2026-09-14" workouts={[]} onCreate={onCreate} onUpdate={noUpdate} onDelete={noDelete} />);
+    fireEvent.click(screen.getByRole("button", { name: /Add session on 2026-09-17/ }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "5" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Duration (optional)" }), { target: { value: "40:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({
+      date: "2026-09-17",
+      planned_distance: 5,
+      distance: 5,
+      duration_seconds: 2400,
+      start_time: "06:30",
+    }));
   });
 
   it("uses a direct delete control, requires confirmation, and restores Rest", async () => {
