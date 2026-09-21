@@ -129,13 +129,16 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     const run = within(screen.getByRole("article", { name: "Easy Run on 2026-09-14" }));
-    for (const value of ["Easy Run", "Keep it relaxed", "5.00 mi", "5.10 mi", "41:00", "8:02 /mi", "Completed"]) {
+    for (const value of ["Easy Run", "Keep it relaxed", "5.00 mi", "5.10 mi", "41:00", "8:02 /mi"]) {
       expect(run.getByText(value)).toBeInTheDocument();
     }
+    expect(run.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
+    expect(run.queryByText("Completed")).not.toBeInTheDocument();
     expect(screen.getByText("Mon")).toBeInTheDocument();
     expect(screen.getByText("Sep 14")).toBeInTheDocument();
     const plannedRun = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
-    expect(plannedRun.getAllByText("Planned")).toHaveLength(2);
+    expect(plannedRun.getByText("Planned")).toBeInTheDocument();
+    expect(plannedRun.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     expect(plannedRun.getAllByText("—")).toHaveLength(4);
     expect(screen.getAllByRole("article")).toHaveLength(7);
     expect(screen.getAllByRole("heading", { name: "Rest" })).toHaveLength(5);
@@ -245,6 +248,51 @@ describe("App", () => {
         title: "Tempo Run",
         planned_distance: 6,
       }),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("counts actual data immediately and refreshes week and trend without a status edit", async () => {
+    const updatedWorkout = {
+      ...weekResponse.workouts[1],
+      distance: 7,
+      status: "completed",
+    };
+    const refreshedWeek = {
+      ...weekResponse,
+      actual_distance: 12.1,
+      workouts: [weekResponse.workouts[0], updatedWorkout],
+    };
+    const refreshedTrend = trendResponse.map((point) => (
+      point.week_start === "2026-09-14"
+        ? { ...point, actual_distance: 12.1 }
+        : point
+    ));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => weekResponse })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => trendResponse })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => updatedWorkout })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshedWeek })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshedTrend });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    const row = within(await screen.findByRole("article", { name: "Workout on 2026-09-15" }));
+    fireEvent.click(row.getByRole("button", { name: "Edit Actual miles" }));
+    const input = row.getByRole("spinbutton", { name: "Actual miles" });
+    fireEvent.change(input, { target: { value: "7" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    const summary = within(screen.getByRole("region", { name: "This Week" }));
+    expect(await summary.findByText("12.10 mi")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts/workout-2", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer session-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ distance: 7 }),
     });
     expect(fetchMock).toHaveBeenCalledTimes(5);
   });

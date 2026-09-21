@@ -28,6 +28,17 @@ export function calculateAveragePaceSeconds(
   return Math.round(durationSeconds / distance);
 }
 
+export function hasActualExecution(
+  workout: WorkoutExecution,
+): boolean {
+  return workout.distance !== null || workout.duration_seconds !== null;
+}
+
+interface WorkoutExecution {
+  duration_seconds: number | null;
+  distance: number | null;
+}
+
 export function formatDuration(seconds: number | null): string {
   if (seconds === null) {
     return "—";

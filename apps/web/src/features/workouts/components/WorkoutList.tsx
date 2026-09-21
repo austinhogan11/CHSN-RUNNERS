@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { mutationErrorMessage } from "../api";
-import type { Workout, WorkoutCreate, WorkoutStatus, WorkoutType, WorkoutUpdate } from "../types";
+import type { Workout, WorkoutCreate, WorkoutType, WorkoutUpdate } from "../types";
 import {
   calculateAveragePaceSeconds,
   formatDistance,
@@ -20,17 +20,6 @@ interface WorkoutListProps {
   onUpdate: (workoutId: string, changes: WorkoutUpdate) => Promise<void>;
   onDelete: (workoutId: string) => Promise<void>;
 }
-
-const statusLabels: Record<WorkoutStatus, string> = {
-  planned: "Planned",
-  completed: "Completed",
-  skipped: "Skipped",
-};
-
-const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
-  value: value as WorkoutStatus,
-  label,
-}));
 
 const typeLabels: Record<WorkoutType, string> = {
   run: "Run",
@@ -141,14 +130,6 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
         options={typeOptions}
         onSave={(value) => onUpdate(workout.id, { type: value })}
         className="workout-type editable-type"
-      />
-
-      <InlineSelectField
-        label="Status"
-        value={workout.status}
-        options={statusOptions}
-        onSave={(value) => onUpdate(workout.id, { status: value })}
-        className={`status status-${workout.status}`}
       />
 
       <dl className="workout-metrics">

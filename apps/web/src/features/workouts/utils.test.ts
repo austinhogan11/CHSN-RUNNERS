@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateAveragePaceSeconds, parseDurationInput } from "./utils";
+import { calculateAveragePaceSeconds, hasActualExecution, parseDurationInput } from "./utils";
+
+describe("hasActualExecution", () => {
+  it.each([
+    [{ distance: null, duration_seconds: null }, false],
+    [{ distance: 5, duration_seconds: null }, true],
+    [{ distance: null, duration_seconds: 2400 }, true],
+  ])("infers execution from actual data", (workout, expected) => {
+    expect(hasActualExecution(workout)).toBe(expected);
+  });
+});
 
 describe("calculateAveragePaceSeconds", () => {
   it("derives rounded seconds per mile", () => {

@@ -17,9 +17,7 @@
   --text-primary: #f4f6f2;
   --text-secondary: #a5ada3;
   --muted: #737c72;
-  --status-planned: #7180a6;
-  --status-completed: #c8ff2e;
-  --status-skipped: #a36a63;
+  --planned: #7180a6;
   --danger: #e17872;
 }
 

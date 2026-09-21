@@ -44,7 +44,7 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .chart-legend { display: flex; gap: 24px; margin: 22px 0 4px; font-size: 12px; color: var(--text-secondary); }
 .chart-legend > span { display: flex; align-items: center; gap: 8px; }
 .legend-line { width: 22px; border-top: 2px solid; }
-.legend-line.planned { border-color: var(--status-planned); border-top-style: dashed; }
+.legend-line.planned { border-color: var(--planned); border-top-style: dashed; }
 .legend-line.actual { border-color: var(--accent); }
 .chart-container { width: 100%; }
 .mileage-chart { display: block; width: 100%; color: var(--accent); }
@@ -52,10 +52,10 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .chart-grid text, .chart-label { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .chart-label.current { fill: var(--accent); font-weight: 600; }
 .chart-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.chart-line.planned { stroke: var(--status-planned); stroke-dasharray: 6 5; }
+.chart-line.planned { stroke: var(--planned); stroke-dasharray: 6 5; }
 .chart-line.actual { stroke: var(--accent); }
 .chart-dot { fill: var(--surface); stroke-width: 2; }
-.chart-dot.planned { stroke: var(--status-planned); }
+.chart-dot.planned { stroke: var(--planned); }
 .chart-dot.actual { stroke: var(--accent); }
 .chart-footer { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; padding: 0 2px 12px; }
 .chart-footer > :last-child { color: var(--accent); }
@@ -84,7 +84,7 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .day-heading { padding: 16px 18px 16px 0; }
 .day-heading .today-label { display: block; margin-top: 10px; }
 .day-sessions { min-width: 0; border-left: 1px solid var(--border); padding-left: 24px; }
-.session-row { display: grid; grid-template-columns: minmax(180px, 1.45fr) 74px 86px minmax(400px, 2fr) 24px; align-items: center; gap: 10px; padding: 11px 0; }
+.session-row { display: grid; grid-template-columns: minmax(200px, 1.5fr) 110px minmax(400px, 2fr) 24px; align-items: center; gap: 10px; padding: 11px 0; }
 .session-row + .session-row { border-top: 1px solid var(--border); }
 .rest-row { grid-template-columns: minmax(0, 1fr); padding: 10px 0 6px; color: var(--muted); background: transparent; }
 .rest-row h3 { color: var(--muted); font-weight: 500; }
@@ -94,10 +94,6 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .workout-info { min-width: 0; }
 .workout-title { display: flex; align-items: center; min-width: 0; }
 .workout-type { color: var(--text-secondary); font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; }
-.status { border: 1px solid; border-radius: 999px; font-size: 10px; line-height: 1.3; font-weight: 600; white-space: nowrap; }
-.status-completed { color: var(--status-completed); background: color-mix(in srgb, var(--status-completed) 10%, transparent); border-color: color-mix(in srgb, var(--status-completed) 35%, transparent); }
-.status-planned { color: var(--status-planned); background: color-mix(in srgb, var(--status-planned) 12%, transparent); border-color: color-mix(in srgb, var(--status-planned) 40%, transparent); }
-.status-skipped { color: var(--status-skipped); background: color-mix(in srgb, var(--status-skipped) 12%, transparent); border-color: color-mix(in srgb, var(--status-skipped) 40%, transparent); }
 .today-label { color: var(--accent); font-size: 11px; }
 .workout-metrics { display: grid; grid-template-columns: repeat(5, minmax(68px, 1fr)); align-items: center; gap: 8px; }
 .workout-metrics dt { color: var(--muted); font-size: 9px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.35px; }
@@ -127,8 +123,8 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .inline-select::after { content: "⌄"; position: absolute; right: 4px; color: currentColor; font-size: 9px; line-height: 1; pointer-events: none; }
 .inline-select select { width: 100%; min-width: 0; appearance: none; border: 0; border-radius: inherit; background: transparent; color: inherit; padding: 2px 14px 2px 3px; font: inherit; font-weight: inherit; letter-spacing: inherit; line-height: inherit; text-transform: inherit; white-space: nowrap; cursor: pointer; }
 .inline-select select:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
-.workout-type.inline-select { justify-self: start; width: 100%; max-width: 74px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-raised); }
-.status.inline-select { justify-self: start; min-width: 72px; }
+.workout-type.inline-select { justify-self: start; width: auto; max-width: 110px; border-radius: 4px; background: transparent; }
+.workout-type.inline-select:hover { background: var(--surface-raised); }
 .session-actions { position: relative; display: flex; align-items: center; justify-content: flex-end; min-width: 24px; }
 .delete-session-button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 17px; line-height: 1; }
 .delete-session-button:hover, .delete-session-button:focus-visible { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); outline: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); }
@@ -162,9 +158,9 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 
 @media (max-width: 900px) {
   .dashboard { width: calc(100% - 48px); }
-  .session-row { grid-template-columns: minmax(180px, 1fr) 74px 86px 24px; }
+  .session-row { grid-template-columns: minmax(180px, 1fr) 110px 24px; }
   .workout-metrics { grid-column: 1 / -1; }
-  .session-actions { grid-column: 4; grid-row: 1; }
+  .session-actions { grid-column: 3; grid-row: 1; }
   .week-totals { gap: 24px; }
   .week-totals > div { min-width: auto; }
 }
@@ -185,13 +181,12 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
   .day-heading { padding-right: 10px; }
   .day-sessions { padding-left: 16px; }
   .workout-date strong { font-size: 13px; }
-  .session-row { grid-template-columns: 74px 86px 1fr; gap: 8px; }
+  .session-row { grid-template-columns: 110px 1fr; gap: 8px; }
   .workout-info { grid-column: 1 / -1; }
   .session-row > .workout-type { grid-column: 1; grid-row: 2; }
-  .session-row > .status { grid-column: 2; grid-row: 2; width: fit-content; }
   .workout-metrics { grid-column: 1 / -1; grid-row: 3; grid-template-columns: repeat(2, 1fr); gap: 10px 12px; }
   .workout-metrics dd { font-size: 13px; }
-  .session-actions { grid-column: 3; grid-row: 2; justify-content: flex-end; }
+  .session-actions { grid-column: 2; grid-row: 2; justify-content: flex-end; }
   .add-session-form { grid-template-columns: minmax(72px, 0.8fr) minmax(90px, 1.2fr); }
   .compact-cancel-button { grid-column: 2; grid-row: 3; justify-self: end; }
   .add-session-error { grid-column: 1 / -1; }

@@ -19,6 +19,7 @@ import type {
   WorkoutCreate,
   WorkoutUpdate,
 } from "./features/workouts/types";
+import { hasActualExecution } from "./features/workouts/utils";
 import { formatLocalDate } from "./utils/date";
 import "./App.css";
 
@@ -187,7 +188,7 @@ function updateWeek(
     ),
     actual_distance: workouts.reduce(
       (total, workout) => (
-        workout.status === "completed" ? total + (workout.distance ?? 0) : total
+        hasActualExecution(workout) ? total + (workout.distance ?? 0) : total
       ),
       0,
     ),
