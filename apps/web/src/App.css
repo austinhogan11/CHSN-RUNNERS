@@ -75,7 +75,7 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .week-totals dt { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .week-totals dd { font-size: 28px; font-weight: 550; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
 
-.workouts-section { --workout-date-column: 66px; --workout-row-columns: 74px minmax(160px, 1fr) 82px 78px 86px 26px; --workout-column-gap: 8px; width: min(100%, 760px); margin: 32px auto 0; }
+.workouts-section { --workout-date-column: 66px; --workout-row-columns: 74px minmax(160px, 1fr) 82px 78px 86px 26px; --workout-column-gap: 8px; width: 100%; margin-top: 32px; }
 .workouts-section > .section-heading { margin-bottom: 16px; }
 .workout-table-header { display: grid; grid-template-columns: var(--workout-date-column) var(--workout-row-columns); gap: var(--workout-column-gap); align-items: center; padding: 9px 14px; border: 1px solid var(--border); border-bottom: 0; border-radius: 12px 12px 0 0; background: var(--surface); color: var(--muted); font-size: 9px; font-weight: 600; letter-spacing: 0.55px; text-transform: uppercase; }
 .workout-date-start-heading { grid-column: 1 / 3; }
