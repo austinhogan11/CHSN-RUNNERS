@@ -177,6 +177,22 @@ describe("WorkoutList presentation", () => {
     expect(screen.getByRole("article", { name: "Easy Run on 2026-09-18" })).toBeInTheDocument();
     expect(screen.queryByRole("article", { name: "Long Run on 2026-09-14" })).not.toBeInTheDocument();
   });
+
+  it("preserves the selected weekday when the displayed week changes", () => {
+    const { rerender } = render(
+      <WorkoutList weekStart="2026-09-14" workouts={[workout]} onCreate={noCreate} onUpdate={noUpdate} onDelete={noDelete} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Select Friday, Sep 18" }));
+
+    rerender(
+      <WorkoutList weekStart="2026-09-21" workouts={[]} onCreate={noCreate} onUpdate={noUpdate} onDelete={noDelete} />,
+    );
+
+    expect(screen.getByRole("button", { name: "Select Friday, Sep 25" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("heading", { name: "Friday, Sep 25, 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add workout for Sep 25" })).toBeInTheDocument();
+    expect(screen.queryByRole("article", { name: "Easy Run on 2026-09-18" })).not.toBeInTheDocument();
+  });
 });
 
 describe("direct field editing", () => {

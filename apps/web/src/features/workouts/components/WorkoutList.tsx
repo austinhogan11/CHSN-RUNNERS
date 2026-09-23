@@ -25,9 +25,10 @@ interface WorkoutListProps {
 export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete }: WorkoutListProps) {
   const today = formatLocalDate(new Date());
   const weekDates = getWeekDates(weekStart);
-  const [selectedDay, setSelectedDay] = useState(() => (
-    weekDates.includes(today) ? today : weekDates[0]
+  const [selectedWeekdayIndex, setSelectedWeekdayIndex] = useState(() => (
+    weekDates.includes(today) ? weekDates.indexOf(today) : 0
   ));
+  const selectedDay = weekDates[selectedWeekdayIndex];
   const workoutsByDate = new Map<string, Workout[]>();
   for (const workout of workouts) {
     const dayWorkouts = workoutsByDate.get(workout.date) ?? [];
@@ -47,7 +48,7 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
       </div>
 
       <ul className="week-overview" aria-label="Week overview">
-        {weekDates.map((day) => {
+        {weekDates.map((day, weekdayIndex) => {
           const dayWorkouts = workoutsByDate.get(day) ?? [];
           const isToday = day === today;
           return (
@@ -57,7 +58,7 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
                 type="button"
                 aria-label={`Select ${formatCalendarDate(day, { weekday: "long", month: "short", day: "numeric" })}${isToday ? ", today" : ""}`}
                 aria-pressed={selectedDay === day}
-                onClick={() => setSelectedDay(day)}
+                onClick={() => setSelectedWeekdayIndex(weekdayIndex)}
               >
                 <span className="overview-weekday">{formatCalendarDate(day, { weekday: "short" })}</span>
                 <strong>{formatCalendarDate(day, { month: "short", day: "numeric" })}</strong>

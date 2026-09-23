@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -434,9 +434,9 @@ describe("App", () => {
   });
 
   it.each([
-    ["2026-09-21T03:59:59Z", "2026-09-20"],
-    ["2026-09-21T04:00:00Z", "2026-09-21"],
-  ])("requests both dashboard endpoints for the local day at %s", async (now, day) => {
+    ["2026-09-21T03:59:59Z", "2026-09-20", "2026-09-14"],
+    ["2026-09-21T04:00:00Z", "2026-09-21", "2026-09-21"],
+  ])("requests the current local week and anchors the trend to the local day at %s", async (now, day, weekStart) => {
     vi.stubEnv("TZ", "America/New_York");
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(now));
@@ -459,8 +459,141 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "This Week" }),
     ).toBeInTheDocument();
     const options = { headers: { Authorization: "Bearer session-token" } };
-    expect(fetchMock).toHaveBeenCalledWith(`/api/weeks/${day}`, options);
+    expect(fetchMock).toHaveBeenCalledWith(`/api/weeks/${weekStart}`, options);
     expect(fetchMock).toHaveBeenCalledWith(`/api/trends/mileage?end=${day}&weeks=12`, options);
+  });
+
+  it("navigates past and future weeks, preserves the weekday, and returns to the current week", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-23T12:00:00"));
+    const currentWeek = {
+      week_start: "2026-09-21",
+      planned_distance: 4,
+      actual_distance: 4,
+      workouts: [{ ...weekResponse.workouts[0], id: "current-run", date: "2026-09-23", title: "Current Run", planned_distance: 4, distance: 4 }],
+    };
+    const previousWeek = {
+      week_start: "2026-09-14",
+      planned_distance: 6,
+      actual_distance: 0,
+      workouts: [{ ...weekResponse.workouts[1], id: "past-run", date: "2026-09-17", title: "Past Run", planned_distance: 6 }],
+    };
+    const futureWeek = { week_start: "2026-09-28", planned_distance: 0, actual_distance: 0, workouts: [] };
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes("trends/mileage")) return { ok: true, status: 200, json: async () => trendResponse };
+      const data = url.endsWith("2026-09-14") ? previousWeek : url.endsWith("2026-09-28") ? futureWeek : currentWeek;
+      expect(options).toEqual({ headers: { Authorization: "Bearer session-token" } });
+      return { ok: true, status: 200, json: async () => data };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "This Week" })).toBeInTheDocument();
+    expect(screen.getAllByText("Sep 21–27, 2026")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Select Wednesday, Sep 23, today" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Select Thursday, Sep 24" }));
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+
+    expect(await screen.findByRole("heading", { name: "Thursday, Sep 17, 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Week Summary" })).toBeInTheDocument();
+    expect(screen.getAllByText("Sep 14–20, 2026")).toHaveLength(2);
+    expect(screen.getByRole("article", { name: "Past Run on 2026-09-17" })).toBeInTheDocument();
+    expect(screen.queryByText("Current Run")).not.toBeInTheDocument();
+    expect(screen.queryByText("Today")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/weeks/2026-09-14", { headers: { Authorization: "Bearer session-token" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    expect(await screen.findByRole("heading", { name: "Thursday, Sep 24, 2026" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    expect(await screen.findByRole("heading", { name: "Thursday, Oct 1, 2026" })).toBeInTheDocument();
+    expect(screen.getAllByText("Sep 28–Oct 4, 2026")).toHaveLength(2);
+    expect(screen.getByText("No workouts yet.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add workout for Oct 1" })).toBeInTheDocument();
+    expect(screen.queryByText("Today")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Current week" }));
+    expect(await screen.findByRole("heading", { name: "Thursday, Sep 24, 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "This Week" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Current week" })).not.toBeInTheDocument();
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Weekly Mileage Trend" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/weeks/2026-09-28", { headers: { Authorization: "Bearer session-token" } });
+    expect(fetchMock).toHaveBeenCalledWith("/api/trends/mileage?end=2026-09-23&weeks=12", { headers: { Authorization: "Bearer session-token" } });
+  });
+
+  it("keeps the displayed week intact when navigation fails", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-23T12:00:00"));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ...weekResponse, week_start: "2026-09-21", workouts: [] }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => trendResponse })
+      .mockRejectedValueOnce(new Error("unavailable"));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Previous week" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load selected week.");
+    expect(screen.getAllByText("Sep 21–27, 2026")).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "This Week" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select Wednesday, Sep 23, today" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("keeps create, update, and delete mutations in the selected navigated week", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-23T08:30:00"));
+    const currentWeek = { week_start: "2026-09-21", planned_distance: 0, actual_distance: 0, workouts: [] };
+    let previousWorkouts: typeof weekResponse.workouts = [];
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url === "/api/workouts") {
+        const body = JSON.parse(String(options?.body));
+        previousWorkouts = [{ ...weekResponse.workouts[1], ...body, id: "navigated-run" }];
+        return { ok: true, status: 201, json: async () => previousWorkouts[0] };
+      }
+      if (url === "/api/workouts/navigated-run" && options?.method === "PATCH") {
+        previousWorkouts = [{ ...previousWorkouts[0], ...JSON.parse(String(options.body)) }];
+        return { ok: true, status: 200, json: async () => previousWorkouts[0] };
+      }
+      if (url === "/api/workouts/navigated-run" && options?.method === "DELETE") {
+        previousWorkouts = [];
+        return { ok: true, status: 204 };
+      }
+      if (url.includes("trends/mileage")) return { ok: true, status: 200, json: async () => trendResponse };
+      if (url.endsWith("2026-09-14")) return { ok: true, status: 200, json: async () => ({ week_start: "2026-09-14", planned_distance: previousWorkouts.length ? 5 : 0, actual_distance: 0, workouts: previousWorkouts }) };
+      return { ok: true, status: 200, json: async () => currentWeek };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Previous week" }));
+    expect(await screen.findAllByText("Sep 14–20, 2026")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Select Wednesday, Sep 16" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add workout for Sep 16" }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("article", { name: "Workout on 2026-09-16" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Wednesday, Sep 16, 2026" })).toBeInTheDocument();
+    expect(screen.getAllByText("Sep 14–20, 2026")).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledWith("/api/workouts", expect.objectContaining({
+      body: expect.stringContaining('"date":"2026-09-16"'),
+    }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => url === "/api/weeks/2026-09-14")).toHaveLength(2));
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Title" }));
+    const title = screen.getByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Past Tempo" } });
+    fireEvent.keyDown(title, { key: "Enter" });
+    expect(await screen.findByRole("article", { name: "Past Tempo on 2026-09-16" })).toBeInTheDocument();
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => url === "/api/weeks/2026-09-14")).toHaveLength(3));
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Past Tempo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(screen.queryByRole("article", { name: "Past Tempo on 2026-09-16" })).not.toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Wednesday, Sep 16, 2026" })).toBeInTheDocument();
+    expect(screen.getAllByText("Sep 14–20, 2026")).toHaveLength(2);
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => url === "/api/weeks/2026-09-14")).toHaveLength(4));
   });
 
   it("shows an error when dashboard data cannot be loaded", async () => {

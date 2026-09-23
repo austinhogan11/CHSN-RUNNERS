@@ -58,7 +58,6 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .chart-dot.planned { stroke: var(--planned); }
 .chart-dot.actual { stroke: var(--accent); }
 .chart-footer { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; padding: 0 2px 12px; }
-.chart-footer > :last-child { color: var(--accent); }
 .chart-data { border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
 .chart-data summary { width: fit-content; cursor: pointer; padding: 14px 0 0; }
 .chart-data summary:hover { color: var(--accent); }
@@ -67,7 +66,15 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .chart-data th:first-child { text-align: left; font-weight: 500; }
 .chart-data td { color: var(--text-primary); }
 
-.week-summary { display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-top: 16px; padding: 23px 28px; }
+.week-navigation { position: relative; display: flex; width: fit-content; align-items: center; gap: 12px; margin: 16px auto 0; color: var(--text-secondary); }
+.week-navigation > button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text-secondary); cursor: pointer; font-size: 20px; line-height: 1; }
+.week-navigation > button:hover, .week-navigation > button:focus-visible { border-color: var(--accent-muted); color: var(--accent); outline: 0; }
+.week-navigation > button:disabled { cursor: default; opacity: 0.5; }
+.week-navigation > strong { min-width: 156px; font-size: 13px; font-weight: 550; text-align: center; }
+.week-navigation > .current-week-button { position: absolute; left: calc(100% + 12px); width: max-content; border: 0; background: transparent; padding: 0 4px; font-size: 11px; }
+.week-navigation-status { margin: 8px 0 -2px; color: var(--muted); font-size: 12px; text-align: center; }
+.week-navigation-status.error { color: var(--danger); }
+.week-summary { display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-top: 12px; padding: 23px 28px; }
 .week-summary .section-note { margin-top: 6px; }
 .week-totals { display: flex; gap: 56px; }
 .week-totals > div { min-width: 142px; }
@@ -196,6 +203,8 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
   .trend-panel .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   h2 { font-size: 18px; }
   .chart-legend { margin-top: 18px; }
+  .week-navigation { margin-bottom: 38px; }
+  .week-navigation > .current-week-button { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
   .week-summary { align-items: stretch; flex-direction: column; gap: 22px; padding: 22px 20px; }
   .week-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .week-totals > div + div { padding-left: 20px; }

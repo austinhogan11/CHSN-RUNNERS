@@ -90,7 +90,6 @@ export function MileageTrend({ points }: MileageTrendProps) {
           </div>
           <div className="chart-footer">
             <span>Week starting Monday</span>
-            <span>Current week →</span>
           </div>
           <details className="chart-data">
             <summary>View weekly data</summary>
