@@ -35,6 +35,7 @@
 }
 
 * { box-sizing: border-box; }
+html { scrollbar-gutter: stable; }
 body { margin: 0; min-width: 320px; }
 h1, h2, h3, p, dl, dd { margin: 0; }
 button, summary { font: inherit; }

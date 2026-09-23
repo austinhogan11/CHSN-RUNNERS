@@ -69,20 +69,21 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .navigation-button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text-secondary); cursor: pointer; font-size: 20px; line-height: 1; }
 .navigation-button:hover, .navigation-button:focus-visible { border-color: var(--accent-muted); color: var(--accent); outline: 0; }
 .navigation-button:disabled { cursor: default; opacity: 0.4; }
-.navigation-status { margin-top: 7px; color: var(--muted); font-size: 11px; }
+.navigation-status { color: var(--muted); font-size: 11px; line-height: 16px; }
 .navigation-status.error { color: var(--danger); }
 .trend-heading { flex-wrap: wrap; }
 .trend-heading > div:first-child { display: grid; min-width: 0; gap: 5px; }
 .trend-navigation { display: flex; gap: 7px; margin-left: auto; }
+.trend-navigation-feedback { min-height: 16px; margin-top: 7px; }
 .week-summary { display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-top: 16px; padding: 23px 28px; }
-.week-summary-heading { min-width: 230px; }
-.week-title-controls { display: flex; align-items: center; gap: 10px; }
-.week-title-controls h2 { min-width: 132px; text-align: center; }
+.week-summary-heading { width: 230px; }
+.week-title-controls { display: grid; grid-template-columns: 30px minmax(0, 1fr) 30px; align-items: center; gap: 10px; }
+.week-title-controls h2 { text-align: center; }
 .current-week-button { appearance: none; border: 0; background: transparent; color: var(--muted); padding: 5px 0 0; cursor: pointer; font-size: 11px; }
 .current-week-button:hover, .current-week-button:focus-visible { color: var(--accent); outline: 0; text-decoration: underline; text-underline-offset: 3px; }
 .current-week-button:disabled { cursor: default; opacity: 0.5; }
-.week-summary .section-note { margin: 6px 0 0 40px; }
-.week-summary .current-week-button, .week-summary .navigation-status { margin-left: 40px; }
+.week-summary .section-note { margin-top: 6px; text-align: center; }
+.week-navigation-feedback { display: flex; min-height: 20px; align-items: center; justify-content: center; gap: 8px; }
 .week-totals { display: flex; gap: 56px; }
 .week-totals > div { min-width: 142px; }
 .week-totals > div + div { padding-left: 32px; border-left: 1px solid var(--border); }
@@ -211,8 +212,7 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
   h2 { font-size: 18px; }
   .chart-legend { margin-top: 18px; }
   .week-summary { align-items: stretch; flex-direction: column; gap: 22px; padding: 22px 20px; }
-  .week-summary-heading { min-width: 0; }
-  .week-title-controls h2 { min-width: 122px; }
+  .week-summary-heading { width: 100%; }
   .week-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .week-totals > div + div { padding-left: 20px; }
   .week-totals dd { font-size: 25px; }

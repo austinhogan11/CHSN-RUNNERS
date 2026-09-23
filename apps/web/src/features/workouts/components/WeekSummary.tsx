@@ -22,9 +22,11 @@ export function WeekSummary({ summary, isCurrentWeek, isLoading, error, onPrevio
           <button className="navigation-button" type="button" aria-label="Next week" disabled={isLoading} onClick={onNext}>›</button>
         </div>
         <p className="section-note"><time dateTime={summary.week_start}>{formatWeekRange(summary.week_start)}</time></p>
-        {!isCurrentWeek && <button className="current-week-button" type="button" disabled={isLoading} onClick={onCurrent}>Current week</button>}
-        {isLoading && <p className="navigation-status" role="status">Loading week…</p>}
-        {error && <p className="navigation-status error" role="alert">{error}</p>}
+        <div className="week-navigation-feedback" aria-live="polite">
+          {!isCurrentWeek && <button className="current-week-button" type="button" disabled={isLoading} onClick={onCurrent}>Current week</button>}
+          {isLoading && <span className="navigation-status" role="status">Loading week…</span>}
+          {!isLoading && error && <span className="navigation-status error" role="alert">{error}</span>}
+        </div>
       </div>
       <dl className="week-totals">
         <div>

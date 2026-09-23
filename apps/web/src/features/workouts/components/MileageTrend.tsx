@@ -59,8 +59,10 @@ export function MileageTrend({ points, isLoading, error, isLatestWindow, onPrevi
         </div>
       </div>
 
-      {isLoading && <p className="navigation-status" role="status">Loading trend…</p>}
-      {error && <p className="navigation-status error" role="alert">{error}</p>}
+      <div className="trend-navigation-feedback" aria-live="polite">
+        {isLoading && <span className="navigation-status" role="status">Loading trend…</span>}
+        {!isLoading && error && <span className="navigation-status error" role="alert">{error}</span>}
+      </div>
 
       <div className="chart-legend" aria-label="Chart legend">
         <span><i className="legend-line planned" aria-hidden="true" />Planned</span>
