@@ -985,7 +985,12 @@ Actual distance takes presentation precedence over planned distance; editing the
 visible distance updates actual distance for an executed session and planned distance
 for a session without execution data. Type, description, status, and separate
 planned/actual fields remain preserved in the domain for future detailed workout
-views. Week navigation remains deferred.
+views. Runner now supports authenticated, unbounded previous and next week
+navigation using local Monday-through-Sunday calendar dates. The selected weekday
+tracks across weeks, past and future empty weeks remain schedulable, and successful
+mutations refresh the displayed week without returning to the current week. The
+weekly summary identifies the current week separately from historical and future
+weeks, while the 12-week mileage trend remains anchored to today's local date.
 
 Support the primary workflow:
 
