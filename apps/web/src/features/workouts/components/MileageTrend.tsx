@@ -49,18 +49,16 @@ export function MileageTrend({ points, isLoading, error, isLatestWindow, onPrevi
   return (
     <section className="panel trend-panel" aria-labelledby={`${id}-heading`}>
       <div className="section-heading trend-heading">
-        <div>
-          <h2 id={`${id}-heading`}>Weekly Mileage Trend</h2>
-          <span className="section-note">{points.length} weeks{range ? ` · ${range}` : ""} · miles</span>
-        </div>
+        <h2 id={`${id}-heading`}>Weekly Mileage Trend</h2>
         <div className="trend-navigation" aria-label="Mileage trend navigation">
           <button className="navigation-button" type="button" aria-label="Previous 12-week trend window" disabled={isLoading} onClick={onPrevious}>‹</button>
           <button className="navigation-button" type="button" aria-label="Next 12-week trend window" disabled={isLoading || isLatestWindow} onClick={onNext}>›</button>
         </div>
       </div>
+      <p className="section-note trend-range">{points.length} weeks{range ? ` · ${range}` : ""} · miles</p>
 
       <div className="trend-navigation-feedback" aria-live="polite">
-        {isLoading && <span className="navigation-status" role="status">Loading trend…</span>}
+        {isLoading && <span className="sr-only" role="status">Updating mileage trend</span>}
         {!isLoading && error && <span className="navigation-status error" role="alert">{error}</span>}
       </div>
 

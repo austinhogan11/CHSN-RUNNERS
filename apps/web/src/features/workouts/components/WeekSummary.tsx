@@ -24,7 +24,7 @@ export function WeekSummary({ summary, isCurrentWeek, isLoading, error, onPrevio
         <p className="section-note"><time dateTime={summary.week_start}>{formatWeekRange(summary.week_start)}</time></p>
         <div className="week-navigation-feedback" aria-live="polite">
           {!isCurrentWeek && <button className="current-week-button" type="button" disabled={isLoading} onClick={onCurrent}>Current week</button>}
-          {isLoading && <span className="navigation-status" role="status">Loading week…</span>}
+          {isLoading && <span className="sr-only" role="status">Updating week</span>}
           {!isLoading && error && <span className="navigation-status error" role="alert">{error}</span>}
         </div>
       </div>

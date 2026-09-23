@@ -612,7 +612,8 @@ describe("App", () => {
     const trendRegion = await screen.findByRole("region", { name: "Weekly Mileage Trend" });
     fireEvent.click(within(trendRegion).getByRole("button", { name: "Previous 12-week trend window" }));
 
-    expect(within(trendRegion).getByRole("status")).toHaveTextContent("Loading trend…");
+    expect(within(trendRegion).getByRole("status")).toHaveTextContent("Updating mileage trend");
+    expect(within(trendRegion).getByRole("status")).toHaveClass("sr-only");
     expect(within(trendRegion).getByRole("button", { name: "Previous 12-week trend window" })).toBeDisabled();
     expect(within(trendRegion).getByRole("img", { name: /Planned and actual weekly mileage/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Wednesday, Sep 23, 2026" })).toBeInTheDocument();

@@ -71,9 +71,9 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .navigation-button:disabled { cursor: default; opacity: 0.4; }
 .navigation-status { color: var(--muted); font-size: 11px; line-height: 16px; }
 .navigation-status.error { color: var(--danger); }
-.trend-heading { flex-wrap: wrap; }
-.trend-heading > div:first-child { display: grid; min-width: 0; gap: 5px; }
+.trend-heading { min-height: 30px; }
 .trend-navigation { display: flex; gap: 7px; margin-left: auto; }
+.trend-range { min-height: 18px; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trend-navigation-feedback { min-height: 16px; margin-top: 7px; }
 .week-summary { display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-top: 16px; padding: 23px 28px; }
 .week-summary-heading { width: 230px; }
