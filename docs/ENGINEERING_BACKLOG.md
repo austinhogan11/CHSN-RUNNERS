@@ -976,6 +976,12 @@ actions, and restores the Volt-on-black theme with Crimson reserved for errors a
 deletion. New sessions default start time from the browser's local clock. Supplying
 duration during creation copies the entered planned distance to actual distance for
 immediate completion and derived pace; omitting duration leaves execution values null.
+The simplified weekly-log V1 view intentionally shows only date and start time,
+title, one distance value, duration, derived pace, and session actions. Actual
+distance takes presentation precedence over planned distance; editing the visible
+distance updates actual distance for an executed session and planned distance for a
+session without execution data. Type, description, and separate planned/actual fields
+remain in the domain for future detail views but are omitted from the weekly log.
 Week navigation remains deferred.
 
 Support the primary workflow:
