@@ -990,7 +990,10 @@ navigation using local Monday-through-Sunday calendar dates. The selected weekda
 tracks across weeks, past and future empty weeks remain schedulable, and successful
 mutations refresh the displayed week without returning to the current week. The
 weekly summary identifies the current week separately from historical and future
-weeks, while the 12-week mileage trend remains anchored to today's local date.
+weeks. Its navigation controls and current-week return action now live inside the
+summary card. The mileage trend has independent one-week window navigation in its
+own header, shows the requested 12-week date range, and prevents navigation beyond
+the latest window ending with the current local week.
 
 Support the primary workflow:
 
