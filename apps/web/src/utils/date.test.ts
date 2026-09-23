@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { formatCalendarDate, formatLocalDate, getWeekDates } from "./date";
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  formatDateRange,
+  formatLocalDate,
+  formatWeekRange,
+  getMondayWeekStart,
+  getWeekDates,
+} from "./date";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -24,6 +32,27 @@ describe("getWeekDates", () => {
       "2026-09-05",
       "2026-09-06",
     ]);
+  });
+});
+
+describe("week navigation dates", () => {
+  it("finds Monday and moves by local calendar days across month, year, and leap-day boundaries", () => {
+    expect(getMondayWeekStart("2026-09-23")).toBe("2026-09-21");
+    expect(addCalendarDays("2026-09-28", 7)).toBe("2026-10-05");
+    expect(addCalendarDays("2026-12-28", 7)).toBe("2027-01-04");
+    expect(addCalendarDays("2028-02-26", 7)).toBe("2028-03-04");
+  });
+
+  it.each([
+    ["2026-09-21", "Sep 21–27, 2026"],
+    ["2026-09-28", "Sep 28–Oct 4, 2026"],
+    ["2026-12-28", "Dec 28, 2026–Jan 3, 2027"],
+  ])("formats the week beginning %s", (weekStart, expected) => {
+    expect(formatWeekRange(weekStart)).toBe(expected);
+  });
+
+  it("formats a multi-month trend range", () => {
+    expect(formatDateRange("2026-07-06", "2026-09-21")).toBe("Jul 6–Sep 21, 2026");
   });
 });
 

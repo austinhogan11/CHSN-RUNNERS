@@ -2,15 +2,21 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import type { MileageTrendPoint } from "../types";
 import { formatDistance } from "../utils";
+import { formatDateRange } from "../../../utils/date";
 
 interface MileageTrendProps {
   points: MileageTrendPoint[];
+  isLoading: boolean;
+  error: string | null;
+  isLatestWindow: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
 }
 
 const height = 290;
 const plot = { left: 44, right: 24, top: 20, bottom: 46 };
 
-export function MileageTrend({ points }: MileageTrendProps) {
+export function MileageTrend({ points, isLoading, error, isLatestWindow, onPrevious, onNext }: MileageTrendProps) {
   const id = useId();
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(960);
@@ -38,12 +44,22 @@ export function MileageTrend({ points }: MileageTrendProps) {
   const y = (distance: number) => baseline - (distance / ceiling) * (baseline - plot.top);
   const planned = points.map((point, index) => `${x(index)},${y(point.planned_distance)}`).join(" ");
   const actual = points.map((point, index) => `${x(index)},${y(point.actual_distance)}`).join(" ");
+  const range = hasPoints ? formatDateRange(points[0].week_start, points[points.length - 1].week_start) : null;
 
   return (
     <section className="panel trend-panel" aria-labelledby={`${id}-heading`}>
-      <div className="section-heading">
+      <div className="section-heading trend-heading">
         <h2 id={`${id}-heading`}>Weekly Mileage Trend</h2>
-        <span className="section-note">Last {points.length} weeks · miles</span>
+        <div className="trend-navigation" aria-label="Mileage trend navigation">
+          <button className="navigation-button" type="button" aria-label="Previous 12-week trend window" disabled={isLoading} onClick={onPrevious}>‹</button>
+          <button className="navigation-button" type="button" aria-label="Next 12-week trend window" disabled={isLoading || isLatestWindow} onClick={onNext}>›</button>
+        </div>
+      </div>
+      <p className="section-note trend-range">{points.length} weeks{range ? ` · ${range}` : ""} · miles</p>
+
+      <div className="trend-navigation-feedback" aria-live="polite">
+        {isLoading && <span className="sr-only" role="status">Updating mileage trend</span>}
+        {!isLoading && error && <span className="navigation-status error" role="alert">{error}</span>}
       </div>
 
       <div className="chart-legend" aria-label="Chart legend">
@@ -58,7 +74,7 @@ export function MileageTrend({ points }: MileageTrendProps) {
               <title id={`${id}-title`}>Planned and actual weekly mileage</title>
               <desc id={`${id}-description`}>
                 {points.length} weeks, from {points[0].week_start} to {points[points.length - 1].week_start}.
-                Empty weeks are shown at zero. The current week is on the right.
+                Empty weeks are shown at zero. The latest week in this window is on the right.
                 Exact values are available in View weekly data below.
               </desc>
               <defs>
@@ -90,7 +106,6 @@ export function MileageTrend({ points }: MileageTrendProps) {
           </div>
           <div className="chart-footer">
             <span>Week starting Monday</span>
-            <span>Current week →</span>
           </div>
           <details className="chart-data">
             <summary>View weekly data</summary>

@@ -22,3 +22,37 @@ export function getWeekDates(weekStart: string): string[] {
     return formatLocalDate(date);
   });
 }
+
+export function addCalendarDays(day: string, days: number): string {
+  const [year, month, date] = day.split("-").map(Number);
+  const result = new Date(year, month - 1, date);
+  result.setDate(result.getDate() + days);
+  return formatLocalDate(result);
+}
+
+export function getMondayWeekStart(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  const value = new Date(year, month - 1, date);
+  const daysSinceMonday = (value.getDay() + 6) % 7;
+  value.setDate(value.getDate() - daysSinceMonday);
+  return formatLocalDate(value);
+}
+
+export function formatWeekRange(weekStart: string): string {
+  return formatDateRange(weekStart, addCalendarDays(weekStart, 6));
+}
+
+export function formatDateRange(start: string, end: string): string {
+  const [startYear, startMonth] = start.split("-").map(Number);
+  const [endYear, endMonth, endDay] = end.split("-").map(Number);
+
+  if (startYear !== endYear) {
+    return `${formatCalendarDate(start, { month: "short", day: "numeric", year: "numeric" })}–${formatCalendarDate(end, { month: "short", day: "numeric", year: "numeric" })}`;
+  }
+
+  if (startMonth !== endMonth) {
+    return `${formatCalendarDate(start, { month: "short", day: "numeric" })}–${formatCalendarDate(end, { month: "short", day: "numeric", year: "numeric" })}`;
+  }
+
+  return `${formatCalendarDate(start, { month: "short", day: "numeric" })}–${endDay}, ${endYear}`;
+}

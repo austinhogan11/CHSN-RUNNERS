@@ -19,7 +19,8 @@ import type {
   WorkoutCreate,
   WorkoutUpdate,
 } from "./features/workouts/types";
-import { formatLocalDate } from "./utils/date";
+import { hasActualExecution } from "./features/workouts/utils";
+import { addCalendarDays, formatLocalDate, getMondayWeekStart } from "./utils/date";
 import "./App.css";
 
 function App() {
@@ -56,8 +57,15 @@ function Dashboard() {
   const [week, setWeek] = useState<WeekSummaryData | null>(null);
   const [trend, setTrend] = useState<MileageTrendPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [weekError, setWeekError] = useState<string | null>(null);
+  const [isWeekLoading, setIsWeekLoading] = useState(false);
+  const [trendError, setTrendError] = useState<string | null>(null);
+  const [isTrendLoading, setIsTrendLoading] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const today = useMemo(() => formatLocalDate(new Date()), []);
+  const currentWeekStart = useMemo(() => getMondayWeekStart(today), [today]);
+  const [displayedWeekStart, setDisplayedWeekStart] = useState(currentWeekStart);
+  const [trendEndWeekStart, setTrendEndWeekStart] = useState(currentWeekStart);
 
   async function requireToken(): Promise<string> {
     const token = await getToken();
@@ -69,12 +77,12 @@ function Dashboard() {
 
   const refreshDashboard = useCallback(async (token: string): Promise<void> => {
     const [weekData, trendData] = await Promise.all([
-      getWeek(today, token),
-      getMileageTrend(today, token),
+      getWeek(currentWeekStart, token),
+      getMileageTrend(addCalendarDays(currentWeekStart, 6), token),
     ]);
     setWeek(weekData);
     setTrend(trendData);
-  }, [today]);
+  }, [currentWeekStart]);
 
   useEffect(() => {
     getToken()
@@ -121,10 +129,47 @@ function Dashboard() {
     await refreshAfterMutation(token);
   }
 
+  async function navigateToWeek(targetWeekStart: string): Promise<void> {
+    if (isWeekLoading || targetWeekStart === displayedWeekStart) return;
+    setIsWeekLoading(true);
+    setWeekError(null);
+    try {
+      const token = await requireToken();
+      const weekData = await getWeek(targetWeekStart, token);
+      setWeek(weekData);
+      setDisplayedWeekStart(targetWeekStart);
+    } catch {
+      setWeekError("Unable to load selected week.");
+    } finally {
+      setIsWeekLoading(false);
+    }
+  }
+
+  async function navigateTrend(targetEndWeekStart: string): Promise<void> {
+    if (isTrendLoading || targetEndWeekStart > currentWeekStart || targetEndWeekStart === trendEndWeekStart) return;
+    setIsTrendLoading(true);
+    setTrendError(null);
+    try {
+      const token = await requireToken();
+      const trendData = await getMileageTrend(addCalendarDays(targetEndWeekStart, 6), token);
+      setTrend(trendData);
+      setTrendEndWeekStart(targetEndWeekStart);
+    } catch {
+      setTrendError("Unable to load mileage trend.");
+    } finally {
+      setIsTrendLoading(false);
+    }
+  }
+
   async function refreshAfterMutation(token: string): Promise<void> {
     setRefreshNotice(null);
     try {
-      await refreshDashboard(token);
+      const [weekData, trendData] = await Promise.all([
+        getWeek(displayedWeekStart, token),
+        getMileageTrend(addCalendarDays(trendEndWeekStart, 6), token),
+      ]);
+      setWeek(weekData);
+      setTrend(trendData);
     } catch {
       setRefreshNotice("Change saved. Updated trend data could not be loaded.");
     }
@@ -152,9 +197,24 @@ function Dashboard() {
     <main className="dashboard">
       <DashboardHeader />
 
-      <MileageTrend points={trend} />
+      <MileageTrend
+        points={trend}
+        isLoading={isTrendLoading}
+        error={trendError}
+        isLatestWindow={trendEndWeekStart === currentWeekStart}
+        onPrevious={() => navigateTrend(addCalendarDays(trendEndWeekStart, -7))}
+        onNext={() => navigateTrend(addCalendarDays(trendEndWeekStart, 7))}
+      />
 
-      <WeekSummary summary={week} />
+      <WeekSummary
+        summary={week}
+        isCurrentWeek={displayedWeekStart === currentWeekStart}
+        isLoading={isWeekLoading}
+        error={weekError}
+        onPrevious={() => navigateToWeek(addCalendarDays(displayedWeekStart, -7))}
+        onNext={() => navigateToWeek(addCalendarDays(displayedWeekStart, 7))}
+        onCurrent={() => navigateToWeek(currentWeekStart)}
+      />
 
       {refreshNotice && <p className="mutation-notice" role="status">{refreshNotice}</p>}
 
@@ -187,7 +247,7 @@ function updateWeek(
     ),
     actual_distance: workouts.reduce(
       (total, workout) => (
-        workout.status === "completed" ? total + (workout.distance ?? 0) : total
+        hasActualExecution(workout) ? total + (workout.distance ?? 0) : total
       ),
       0,
     ),

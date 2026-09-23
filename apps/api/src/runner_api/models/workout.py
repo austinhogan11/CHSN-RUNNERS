@@ -20,6 +20,22 @@ class WorkoutType(StrEnum):
     OTHER = "other"
 
 
+def has_actual_execution(
+    distance: float | None,
+    duration_seconds: int | None,
+) -> bool:
+    return distance is not None or duration_seconds is not None
+
+
+def completion_status(
+    distance: float | None,
+    duration_seconds: int | None,
+) -> WorkoutStatus:
+    if has_actual_execution(distance, duration_seconds):
+        return WorkoutStatus.COMPLETED
+    return WorkoutStatus.PLANNED
+
+
 def calculate_average_pace_seconds(
     duration_seconds: int | None,
     distance: float | None,

@@ -1,23 +1,45 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #edf0e9;
-  background: #0c100e;
+  color: var(--text-primary);
+  background: var(--background);
   color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --surface: #141a16;
-  --border: #2b342d;
-  --muted: #a3ada4;
-  --accent: #d0f66c;
+  --runner-bg: #050705;
+  --runner-surface: #0b0f0b;
+  --runner-surface-raised: #111611;
+  --runner-border: #252c25;
+  --runner-volt: #ccff00;
+  --runner-volt-hover: #d8ff40;
+  --runner-volt-muted: #526600;
+  --runner-text: #f4f5f1;
+  --runner-text-secondary: #a3aa9f;
+  --runner-text-muted: #71786e;
+  --runner-crimson: #d63c4a;
+  --runner-crimson-hover: #ed5260;
+  --background: var(--runner-bg);
+  --surface: var(--runner-surface);
+  --surface-raised: var(--runner-surface-raised);
+  --border: var(--runner-border);
+  --accent: var(--runner-volt);
+  --accent-hover: var(--runner-volt-hover);
+  --accent-muted: var(--runner-volt-muted);
+  --text-primary: var(--runner-text);
+  --text-secondary: var(--runner-text-secondary);
+  --muted: var(--runner-text-muted);
+  --planned: #7180a6;
+  --danger: var(--runner-crimson);
+  --danger-hover: var(--runner-crimson-hover);
 }
 
 * { box-sizing: border-box; }
+html { scrollbar-gutter: stable; }
 body { margin: 0; min-width: 320px; }
 h1, h2, h3, p, dl, dd { margin: 0; }
 button, summary { font: inherit; }
-::selection { background: #d0f66c; color: #141a16; }
+::selection { background: var(--accent); color: var(--background); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
 
 .sr-only {
