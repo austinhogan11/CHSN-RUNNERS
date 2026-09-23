@@ -1,16 +1,9 @@
 import { useId, useState } from "react";
 
 import { mutationErrorMessage } from "../api";
-import type { WorkoutCreate, WorkoutType } from "../types";
+import type { WorkoutCreate } from "../types";
 import { parseDurationInput } from "../utils";
-
-const workoutTypes: Array<{ value: WorkoutType; label: string }> = [
-  { value: "run", label: "Run" },
-  { value: "rest", label: "Rest" },
-  { value: "strength", label: "Strength" },
-  { value: "cross_training", label: "Cross-training" },
-  { value: "other", label: "Other" },
-];
+import { formatCalendarDate } from "../../../utils/date";
 
 interface AddSessionFormProps {
   day: string;
@@ -20,7 +13,6 @@ interface AddSessionFormProps {
 export function AddSessionForm({ day, onCreate }: AddSessionFormProps) {
   const id = useId();
   const [isOpen, setIsOpen] = useState(false);
-  const [type, setType] = useState<WorkoutType>("run");
   const [title, setTitle] = useState("");
   const [distance, setDistance] = useState("");
   const [duration, setDuration] = useState("");
@@ -29,7 +21,6 @@ export function AddSessionForm({ day, onCreate }: AddSessionFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   function reset(): void {
-    setType("run");
     setTitle("");
     setDistance("");
     setDuration("");
@@ -62,7 +53,6 @@ export function AddSessionForm({ day, onCreate }: AddSessionFormProps) {
       distance: null,
       duration_seconds: null,
     };
-    if (type !== "run") workout.type = type;
     if (title.trim()) workout.title = title.trim();
     if (parsedDistance !== undefined) workout.planned_distance = parsedDistance;
     if (durationSeconds !== null) {
@@ -85,20 +75,14 @@ export function AddSessionForm({ day, onCreate }: AddSessionFormProps) {
 
   if (!isOpen) {
     return (
-      <button className="add-session-button" type="button" aria-label={`Add session on ${day}`} onClick={open}>
-        + Add session
+      <button className="add-session-button" type="button" aria-label={`Add session for ${formatCalendarDate(day, { month: "short", day: "numeric" })}`} onClick={open}>
+        +
       </button>
     );
   }
 
   return (
     <form className="add-session-form" aria-label={`New session on ${day}`} onSubmit={handleSubmit}>
-      <div className="add-type-field">
-        <label className="sr-only" htmlFor={`${id}-type`}>Type</label>
-        <select id={`${id}-type`} value={type} disabled={isSaving} onChange={(event) => setType(event.target.value as WorkoutType)}>
-          {workoutTypes.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </div>
       <div className="add-title-field">
         <label className="sr-only" htmlFor={`${id}-title`}>Title</label>
         <input id={`${id}-title`} value={title} disabled={isSaving} placeholder="Workout title..." onChange={(event) => setTitle(event.target.value)} />

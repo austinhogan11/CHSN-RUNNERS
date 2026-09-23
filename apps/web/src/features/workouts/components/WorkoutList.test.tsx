@@ -61,50 +61,47 @@ afterEach(() => {
 });
 
 describe("WorkoutList presentation", () => {
-  it("renders seven days, real workouts, rest days, and date-specific add controls", () => {
-    const { container } = renderList();
+  it("renders the simplified log fields without richer workout metadata", () => {
+    const { container } = renderList([{ ...workout, description: "Hidden details", start_time: "07:12:00" }]);
 
     const header = container.querySelector(".workout-table-header");
     expect(header).not.toBeNull();
     expect(Array.from(header?.children ?? []).map((cell) => cell.textContent)).toEqual([
-      "Date",
-      "Type",
-      "Title",
-      "Description",
-      "Start",
+      "Date / Start",
+      "Workout title",
+      "Distance",
       "Duration",
-      "Pace",
-      "Planned",
-      "Actual",
+      "Avg pace",
       "",
     ]);
     expect(header?.lastElementChild).toHaveClass("workout-delete-heading");
     expect(screen.getAllByRole("listitem")).toHaveLength(7);
-    expect(screen.getAllByRole("button", { name: /Add session on/ })).toHaveLength(7);
-    expect(screen.getAllByRole("article")).toHaveLength(7);
+    expect(screen.getAllByRole("button", { name: /Add session for/ })).toHaveLength(7);
+    expect(screen.getAllByRole("article")).toHaveLength(1);
     const row = within(screen.getByRole("article", { name: "Easy Run on 2026-09-18" }));
     expect(row.getByRole("button", { name: "Delete Easy Run" }).parentElement).toHaveClass("session-actions");
+    expect(row.queryByRole("combobox", { name: "Edit Type" })).not.toBeInTheDocument();
     expect(row.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
-    expect(row.getByRole("button", { name: "Edit Planned miles" })).toHaveTextContent("5.00 mi");
+    expect(row.queryByText("Hidden details")).not.toBeInTheDocument();
+    expect(row.getByRole("button", { name: "Edit Start time" })).toHaveTextContent("7:12 AM");
+    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.00 mi");
     expect(screen.getByText("Fri")).toBeInTheDocument();
     expect(screen.getByText("Sep 18")).toBeInTheDocument();
   });
 
-  it("renders an empty week as seven presentation-only rest days", () => {
+  it("renders an empty week as compact date rows with plus actions", () => {
     renderList([]);
-    expect(screen.getAllByRole("article")).toHaveLength(7);
-    expect(screen.getAllByRole("heading", { name: "Rest" })).toHaveLength(7);
-    expect(screen.getByRole("article", { name: "Rest on 2026-09-14" })).toBeInTheDocument();
-    expect(screen.getByRole("article", { name: "Rest on 2026-09-20" })).toBeInTheDocument();
-    const monday = screen.getByRole("article", { name: "Rest on 2026-09-14" }).closest("li");
-    expect(within(monday as HTMLElement).getByRole("button", { name: "Add session on 2026-09-14" })).toBeInTheDocument();
+    expect(screen.queryAllByRole("article")).toHaveLength(0);
+    expect(screen.queryByRole("heading", { name: "Rest" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Add session for/ })).toHaveLength(7);
+    expect(screen.getByRole("button", { name: "Add session for Sep 14" })).toHaveTextContent("+");
   });
 
   it("preserves multiple sessions on one date and edits only the selected session", async () => {
     const onUpdate = vi.fn();
     const { container } = render(
       <StatefulList
-        initial={[{ ...workout, id: "run-am", title: "Morning Run" }, { ...workout, id: "strength-pm", type: "strength", title: "Gym" }]}
+        initial={[{ ...workout, id: "run-am", title: "Morning Run", start_time: "07:12:00" }, { ...workout, id: "strength-pm", type: "strength", title: "Gym", start_time: "18:15:00" }]}
         onUpdate={onUpdate}
       />,
     );
@@ -115,14 +112,17 @@ describe("WorkoutList presentation", () => {
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-am", { title: "Recovery Run" }));
     expect(screen.getByRole("article", { name: "Gym on 2026-09-18" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Add session on 2026-09-18/ })).toHaveLength(1);
+    expect(screen.getByText("7:12 AM")).toBeInTheDocument();
+    expect(screen.getByText("6:15 PM")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Add session for Sep 18/ })).toHaveLength(1);
     expect(container.querySelectorAll('time[datetime="2026-09-18"]')).toHaveLength(1);
   });
 
   it("renders an explicit rest session as an editable persisted workout", () => {
     renderList([{ ...workout, id: "rest-1", type: "rest", title: null, planned_distance: null }]);
     const row = within(screen.getByRole("article", { name: "Rest on 2026-09-18" }));
-    expect(row.getByRole("combobox", { name: "Edit Type" })).toHaveValue("rest");
+    expect(row.getByRole("button", { name: "Edit Title" })).toHaveTextContent("Rest");
+    expect(row.queryByRole("combobox", { name: "Edit Type" })).not.toBeInTheDocument();
     expect(row.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     expect(row.getByRole("button", { name: "Delete Rest" })).toHaveTextContent("×");
   });
@@ -165,50 +165,50 @@ describe("direct field editing", () => {
     expect(input).toHaveValue("Still here");
   });
 
-  it("uses Add note for an empty description and clears descriptions to null", async () => {
+  it("shows actual distance before planned distance and edits the executed value", async () => {
     const onUpdate = vi.fn(async () => {});
-    const { unmount } = renderList([{ ...workout, description: "Keep this" }], onUpdate);
-    edit("Description");
-    enterValue("Description", "");
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-1", { description: null }));
-
-    unmount();
-    renderList();
-    const addNote = screen.getByRole("button", { name: "Edit Description" });
-    expect(addNote).toHaveTextContent("Add note");
-    fireEvent.click(addNote);
-    expect(screen.getByRole("textbox", { name: "Description" })).toHaveValue("");
+    renderList([{ ...workout, planned_distance: 6, distance: 5.25 }], onUpdate);
+    expect(screen.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.25 mi");
+    edit("Distance");
+    const input = screen.getByRole("spinbutton", { name: "Distance" });
+    fireEvent.change(input, { target: { value: "5.5" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-1", { distance: 5.5 }));
   });
 
-  it.each([
-    ["Planned miles", "6.5", { planned_distance: 6.5 }],
-    ["Actual miles", "4.25", { distance: 4.25 }],
-  ])("patches only %s", async (label, value, changes) => {
+  it("shows and edits planned distance when execution data is absent", async () => {
     const onUpdate = vi.fn(async () => {});
     renderList([workout], onUpdate);
-    edit(label as string);
-    const input = screen.getByRole("spinbutton", { name: label as string });
-    fireEvent.change(input, { target: { value } });
+    expect(screen.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.00 mi");
+    edit("Distance");
+    const input = screen.getByRole("spinbutton", { name: "Distance" });
+    fireEvent.change(input, { target: { value: "6.5" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-1", changes));
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-1", { planned_distance: 6.5 }));
   });
 
-  it("clears actual distance to null and rejects negative distance locally", async () => {
+  it("edits actual distance when duration alone marks a workout executed", async () => {
     const onUpdate = vi.fn(async () => {});
-    const { unmount } = renderList([{ ...workout, distance: 4 }], onUpdate);
-    edit("Actual miles");
-    const actual = screen.getByRole("spinbutton", { name: "Actual miles" });
-    fireEvent.change(actual, { target: { value: "" } });
-    fireEvent.keyDown(actual, { key: "Enter" });
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-1", { distance: null }));
+    renderList([{ ...workout, duration_seconds: 1800 }], onUpdate);
+    edit("Distance");
+    const input = screen.getByRole("spinbutton", { name: "Distance" });
+    fireEvent.change(input, { target: { value: "4.25" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-1", { distance: 4.25 }));
+  });
+
+  it("shows an empty distance and rejects negative distance locally", async () => {
+    const onUpdate = vi.fn(async () => {});
+    const { unmount } = renderList([{ ...workout, planned_distance: null }], onUpdate);
+    expect(screen.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("—");
     unmount();
 
     const invalidUpdate = vi.fn(async () => {});
     renderList([workout], invalidUpdate);
-    edit("Planned miles");
-    const planned = screen.getByRole("spinbutton", { name: "Planned miles" });
-    fireEvent.change(planned, { target: { value: "-1" } });
-    fireEvent.keyDown(planned, { key: "Enter" });
+    edit("Distance");
+    const distance = screen.getByRole("spinbutton", { name: "Distance" });
+    fireEvent.change(distance, { target: { value: "-1" } });
+    fireEvent.keyDown(distance, { key: "Enter" });
     expect(await screen.findByRole("alert")).toHaveTextContent("Distance must be zero or greater");
     expect(invalidUpdate).not.toHaveBeenCalled();
   });
@@ -235,26 +235,11 @@ describe("direct field editing", () => {
   });
 
   it("keeps pace derived and updates it after distance and duration changes", async () => {
-    render(<StatefulList />);
-    edit("Actual miles");
-    const actual = screen.getByRole("spinbutton", { name: "Actual miles" });
-    fireEvent.change(actual, { target: { value: "5" } });
-    fireEvent.keyDown(actual, { key: "Enter" });
-    await screen.findByRole("button", { name: "Edit Actual miles" });
+    render(<StatefulList initial={[{ ...workout, distance: 5 }]} />);
     edit("Duration");
     enterValue("Duration", "40:00");
     expect(await screen.findByText("8:00 /mi")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit Avg. pace" })).not.toBeInTheDocument();
-  });
-
-  it("keeps type first-click editable and patches only type", async () => {
-    const onUpdate = vi.fn(async () => {});
-    renderList([workout], onUpdate);
-    const select = screen.getByRole("combobox", { name: "Edit Type" });
-    expect(select).toBeEnabled();
-    fireEvent.mouseDown(select);
-    fireEvent.change(select, { target: { value: "strength" } });
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("run-1", { type: "strength" }));
   });
 
   it("edits and clears start time", async () => {
@@ -287,7 +272,7 @@ describe("direct field editing", () => {
     fireEvent.keyDown(title, { key: "Enter" });
     expect(onUpdate).toHaveBeenCalledOnce();
     expect(screen.getByRole("status")).toHaveTextContent("Saving...");
-    expect(screen.getByRole("button", { name: "Edit Planned miles" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Edit Distance" })).toBeEnabled();
   });
 
   it("has no session-wide Edit or Save controls", () => {
@@ -304,9 +289,9 @@ describe("compact session actions", () => {
     vi.setSystemTime(new Date("2026-09-21T19:42:00Z"));
     const onCreate = vi.fn(async () => {});
     render(<WorkoutList weekStart="2026-09-14" workouts={[]} onCreate={onCreate} onUpdate={noUpdate} onDelete={noDelete} />);
-    fireEvent.click(screen.getByRole("button", { name: /Add session on 2026-09-16/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Add session for Sep 16" }));
     const addRow = screen.getByRole("form", { name: "New session on 2026-09-16" });
-    expect(within(addRow).getByRole("combobox", { name: "Type" })).toHaveValue("run");
+    expect(within(addRow).queryByRole("combobox", { name: "Type" })).not.toBeInTheDocument();
     expect(within(addRow).getByRole("textbox", { name: "Title" })).toHaveAttribute("placeholder", "Workout title...");
     expect(within(addRow).getByRole("spinbutton", { name: "Distance" })).toHaveAttribute("placeholder", "5.0");
     expect(within(addRow).getByRole("textbox", { name: "Duration (optional)" })).toHaveAttribute("placeholder", "MM:SS optional");
@@ -329,14 +314,12 @@ describe("compact session actions", () => {
     vi.setSystemTime(new Date("2026-09-21T12:05:00"));
     const onCreate = vi.fn(async () => {});
     render(<WorkoutList weekStart="2026-09-14" workouts={[]} onCreate={onCreate} onUpdate={noUpdate} onDelete={noDelete} />);
-    fireEvent.click(screen.getByRole("button", { name: /Add session on 2026-09-15/ }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Type" }), { target: { value: "strength" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add session for Sep 15" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "  Gym  " } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "2.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith({
       date: "2026-09-15",
-      type: "strength",
       title: "Gym",
       planned_distance: 2.5,
       start_time: "12:05",
@@ -350,7 +333,7 @@ describe("compact session actions", () => {
     vi.setSystemTime(new Date("2026-09-21T06:30:00"));
     const onCreate = vi.fn(async () => {});
     render(<WorkoutList weekStart="2026-09-14" workouts={[]} onCreate={onCreate} onUpdate={noUpdate} onDelete={noDelete} />);
-    fireEvent.click(screen.getByRole("button", { name: /Add session on 2026-09-17/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Add session for Sep 17" }));
     fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "5" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Duration (optional)" }), { target: { value: "40:00" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
@@ -364,7 +347,24 @@ describe("compact session actions", () => {
     }));
   });
 
-  it("uses a direct delete control, requires confirmation, and restores Rest", async () => {
+  it("allows duration-only execution without inventing distance", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-21T18:10:00"));
+    const onCreate = vi.fn(async () => {});
+    render(<WorkoutList weekStart="2026-09-14" workouts={[]} onCreate={onCreate} onUpdate={noUpdate} onDelete={noDelete} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add session for Sep 18" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Duration (optional)" }), { target: { value: "35:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({
+      date: "2026-09-18",
+      start_time: "18:10",
+      distance: null,
+      duration_seconds: 2100,
+    }));
+  });
+
+  it("uses a direct delete control, requires confirmation, and restores the empty day", async () => {
     render(<StatefulList />);
     const deleteButton = screen.getByRole("button", { name: "Delete Easy Run" });
     expect(deleteButton).toHaveTextContent("×");
@@ -375,7 +375,8 @@ describe("compact session actions", () => {
     const confirmation = screen.getByRole("group", { name: "Delete Easy Run" });
     expect(within(confirmation).getByText("Delete this session?")).toBeInTheDocument();
     fireEvent.click(within(confirmation).getByRole("button", { name: "Confirm" }));
-    expect(await screen.findByRole("article", { name: "Rest on 2026-09-18" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("article", { name: "Easy Run on 2026-09-18" })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Add session for Sep 18" })).toBeInTheDocument();
   });
 
   it("cancels direct delete confirmation with Escape", () => {
