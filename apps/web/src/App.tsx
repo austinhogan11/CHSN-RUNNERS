@@ -20,7 +20,7 @@ import type {
   WorkoutUpdate,
 } from "./features/workouts/types";
 import { hasActualExecution } from "./features/workouts/utils";
-import { addCalendarDays, formatLocalDate, formatWeekRange, getMondayWeekStart } from "./utils/date";
+import { addCalendarDays, formatLocalDate, getMondayWeekStart } from "./utils/date";
 import "./App.css";
 
 function App() {
@@ -59,10 +59,13 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [weekError, setWeekError] = useState<string | null>(null);
   const [isWeekLoading, setIsWeekLoading] = useState(false);
+  const [trendError, setTrendError] = useState<string | null>(null);
+  const [isTrendLoading, setIsTrendLoading] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const today = useMemo(() => formatLocalDate(new Date()), []);
   const currentWeekStart = useMemo(() => getMondayWeekStart(today), [today]);
   const [displayedWeekStart, setDisplayedWeekStart] = useState(currentWeekStart);
+  const [trendEndWeekStart, setTrendEndWeekStart] = useState(currentWeekStart);
 
   async function requireToken(): Promise<string> {
     const token = await getToken();
@@ -75,11 +78,11 @@ function Dashboard() {
   const refreshDashboard = useCallback(async (token: string): Promise<void> => {
     const [weekData, trendData] = await Promise.all([
       getWeek(currentWeekStart, token),
-      getMileageTrend(today, token),
+      getMileageTrend(addCalendarDays(currentWeekStart, 6), token),
     ]);
     setWeek(weekData);
     setTrend(trendData);
-  }, [currentWeekStart, today]);
+  }, [currentWeekStart]);
 
   useEffect(() => {
     getToken()
@@ -142,12 +145,28 @@ function Dashboard() {
     }
   }
 
+  async function navigateTrend(targetEndWeekStart: string): Promise<void> {
+    if (isTrendLoading || targetEndWeekStart > currentWeekStart || targetEndWeekStart === trendEndWeekStart) return;
+    setIsTrendLoading(true);
+    setTrendError(null);
+    try {
+      const token = await requireToken();
+      const trendData = await getMileageTrend(addCalendarDays(targetEndWeekStart, 6), token);
+      setTrend(trendData);
+      setTrendEndWeekStart(targetEndWeekStart);
+    } catch {
+      setTrendError("Unable to load mileage trend.");
+    } finally {
+      setIsTrendLoading(false);
+    }
+  }
+
   async function refreshAfterMutation(token: string): Promise<void> {
     setRefreshNotice(null);
     try {
       const [weekData, trendData] = await Promise.all([
         getWeek(displayedWeekStart, token),
-        getMileageTrend(today, token),
+        getMileageTrend(addCalendarDays(trendEndWeekStart, 6), token),
       ]);
       setWeek(weekData);
       setTrend(trendData);
@@ -178,21 +197,24 @@ function Dashboard() {
     <main className="dashboard">
       <DashboardHeader />
 
-      <MileageTrend points={trend} />
+      <MileageTrend
+        points={trend}
+        isLoading={isTrendLoading}
+        error={trendError}
+        isLatestWindow={trendEndWeekStart === currentWeekStart}
+        onPrevious={() => navigateTrend(addCalendarDays(trendEndWeekStart, -7))}
+        onNext={() => navigateTrend(addCalendarDays(trendEndWeekStart, 7))}
+      />
 
-      <nav className="week-navigation" aria-label="Week navigation">
-        <button type="button" aria-label="Previous week" disabled={isWeekLoading} onClick={() => navigateToWeek(addCalendarDays(displayedWeekStart, -7))}>‹</button>
-        <strong>{formatWeekRange(displayedWeekStart)}</strong>
-        <button type="button" aria-label="Next week" disabled={isWeekLoading} onClick={() => navigateToWeek(addCalendarDays(displayedWeekStart, 7))}>›</button>
-        {displayedWeekStart !== currentWeekStart && (
-          <button className="current-week-button" type="button" disabled={isWeekLoading} onClick={() => navigateToWeek(currentWeekStart)}>Current week</button>
-        )}
-      </nav>
-
-      {isWeekLoading && <p className="week-navigation-status" role="status">Loading week…</p>}
-      {weekError && <p className="week-navigation-status error" role="alert">{weekError}</p>}
-
-      <WeekSummary summary={week} isCurrentWeek={displayedWeekStart === currentWeekStart} />
+      <WeekSummary
+        summary={week}
+        isCurrentWeek={displayedWeekStart === currentWeekStart}
+        isLoading={isWeekLoading}
+        error={weekError}
+        onPrevious={() => navigateToWeek(addCalendarDays(displayedWeekStart, -7))}
+        onNext={() => navigateToWeek(addCalendarDays(displayedWeekStart, 7))}
+        onCurrent={() => navigateToWeek(currentWeekStart)}
+      />
 
       {refreshNotice && <p className="mutation-notice" role="status">{refreshNotice}</p>}
 

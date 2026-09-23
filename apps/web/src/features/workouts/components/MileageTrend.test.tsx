@@ -13,6 +13,19 @@ const points: MileageTrendPoint[] = Array.from({ length: 12 }, (_, index) => {
   };
 });
 
+function renderTrend(trendPoints: MileageTrendPoint[] = points) {
+  return render(
+    <MileageTrend
+      points={trendPoints}
+      isLoading={false}
+      error={null}
+      isLatestWindow
+      onPrevious={() => {}}
+      onNext={() => {}}
+    />,
+  );
+}
+
 function coordinates(line: Element) {
   return line.getAttribute("points")!.trim().split(/\s+/).map((point) => point.split(",").map(Number));
 }
@@ -23,7 +36,7 @@ afterEach(() => {
 
 describe("MileageTrend", () => {
   it("plots both mileage series chronologically, including every zero-mile week", () => {
-    render(<MileageTrend points={points} />);
+    renderTrend();
     const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
     const lines = chart.querySelectorAll("polyline");
     expect(lines).toHaveLength(2);
@@ -43,7 +56,7 @@ describe("MileageTrend", () => {
   });
 
   it("provides exact accessible data for all 12 weeks, including empty weeks", () => {
-    render(<MileageTrend points={points} />);
+    renderTrend();
     fireEvent.click(screen.getByText("View weekly data"));
     const rows = within(screen.getByRole("table")).getAllByRole("row");
     expect(rows).toHaveLength(13);
@@ -55,7 +68,7 @@ describe("MileageTrend", () => {
   });
 
   it("keeps an all-zero history visible on a valid mileage scale", () => {
-    render(<MileageTrend points={points.map((point) => ({ ...point, planned_distance: 0, actual_distance: 0 }))} />);
+    renderTrend(points.map((point) => ({ ...point, planned_distance: 0, actual_distance: 0 })));
     const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
     for (const line of chart.querySelectorAll("polyline")) {
       const plotted = coordinates(line);
@@ -66,7 +79,7 @@ describe("MileageTrend", () => {
   });
 
   it("shows an intentional state when no history was returned", () => {
-    render(<MileageTrend points={[]} />);
+    renderTrend([]);
     expect(screen.getByText("No mileage history yet.")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
@@ -79,7 +92,7 @@ describe("MileageTrend", () => {
       };
     }));
 
-    render(<MileageTrend points={points} />);
+    renderTrend();
 
     const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
     for (const line of chart.querySelectorAll("polyline")) {

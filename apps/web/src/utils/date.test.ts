@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addCalendarDays,
   formatCalendarDate,
+  formatDateRange,
   formatLocalDate,
   formatWeekRange,
   getMondayWeekStart,
@@ -48,6 +49,10 @@ describe("week navigation dates", () => {
     ["2026-12-28", "Dec 28, 2026–Jan 3, 2027"],
   ])("formats the week beginning %s", (weekStart, expected) => {
     expect(formatWeekRange(weekStart)).toBe(expected);
+  });
+
+  it("formats a multi-month trend range", () => {
+    expect(formatDateRange("2026-07-06", "2026-09-21")).toBe("Jul 6–Sep 21, 2026");
   });
 });
 

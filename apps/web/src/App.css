@@ -66,16 +66,23 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .chart-data th:first-child { text-align: left; font-weight: 500; }
 .chart-data td { color: var(--text-primary); }
 
-.week-navigation { position: relative; display: flex; width: fit-content; align-items: center; gap: 12px; margin: 16px auto 0; color: var(--text-secondary); }
-.week-navigation > button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text-secondary); cursor: pointer; font-size: 20px; line-height: 1; }
-.week-navigation > button:hover, .week-navigation > button:focus-visible { border-color: var(--accent-muted); color: var(--accent); outline: 0; }
-.week-navigation > button:disabled { cursor: default; opacity: 0.5; }
-.week-navigation > strong { min-width: 156px; font-size: 13px; font-weight: 550; text-align: center; }
-.week-navigation > .current-week-button { position: absolute; left: calc(100% + 12px); width: max-content; border: 0; background: transparent; padding: 0 4px; font-size: 11px; }
-.week-navigation-status { margin: 8px 0 -2px; color: var(--muted); font-size: 12px; text-align: center; }
-.week-navigation-status.error { color: var(--danger); }
-.week-summary { display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-top: 12px; padding: 23px 28px; }
-.week-summary .section-note { margin-top: 6px; }
+.navigation-button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text-secondary); cursor: pointer; font-size: 20px; line-height: 1; }
+.navigation-button:hover, .navigation-button:focus-visible { border-color: var(--accent-muted); color: var(--accent); outline: 0; }
+.navigation-button:disabled { cursor: default; opacity: 0.4; }
+.navigation-status { margin-top: 7px; color: var(--muted); font-size: 11px; }
+.navigation-status.error { color: var(--danger); }
+.trend-heading { flex-wrap: wrap; }
+.trend-heading > div:first-child { display: grid; min-width: 0; gap: 5px; }
+.trend-navigation { display: flex; gap: 7px; margin-left: auto; }
+.week-summary { display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-top: 16px; padding: 23px 28px; }
+.week-summary-heading { min-width: 230px; }
+.week-title-controls { display: flex; align-items: center; gap: 10px; }
+.week-title-controls h2 { min-width: 132px; text-align: center; }
+.current-week-button { appearance: none; border: 0; background: transparent; color: var(--muted); padding: 5px 0 0; cursor: pointer; font-size: 11px; }
+.current-week-button:hover, .current-week-button:focus-visible { color: var(--accent); outline: 0; text-decoration: underline; text-underline-offset: 3px; }
+.current-week-button:disabled { cursor: default; opacity: 0.5; }
+.week-summary .section-note { margin: 6px 0 0 40px; }
+.week-summary .current-week-button, .week-summary .navigation-status { margin-left: 40px; }
 .week-totals { display: flex; gap: 56px; }
 .week-totals > div { min-width: 142px; }
 .week-totals > div + div { padding-left: 32px; border-left: 1px solid var(--border); }
@@ -200,12 +207,12 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
   .dashboard { width: calc(100% - 32px); padding-bottom: 32px; }
   .dashboard-header { padding: 20px 0; }
   .trend-panel { padding: 20px 16px 16px; }
-  .trend-panel .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .trend-panel .section-heading { align-items: flex-start; }
   h2 { font-size: 18px; }
   .chart-legend { margin-top: 18px; }
-  .week-navigation { margin-bottom: 38px; }
-  .week-navigation > .current-week-button { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
   .week-summary { align-items: stretch; flex-direction: column; gap: 22px; padding: 22px 20px; }
+  .week-summary-heading { min-width: 0; }
+  .week-title-controls h2 { min-width: 122px; }
   .week-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .week-totals > div + div { padding-left: 20px; }
   .week-totals dd { font-size: 25px; }

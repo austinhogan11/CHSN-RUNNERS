@@ -39,17 +39,20 @@ export function getMondayWeekStart(day: string): string {
 }
 
 export function formatWeekRange(weekStart: string): string {
-  const weekEnd = addCalendarDays(weekStart, 6);
-  const [startYear, startMonth] = weekStart.split("-").map(Number);
-  const [endYear, endMonth, endDay] = weekEnd.split("-").map(Number);
+  return formatDateRange(weekStart, addCalendarDays(weekStart, 6));
+}
+
+export function formatDateRange(start: string, end: string): string {
+  const [startYear, startMonth] = start.split("-").map(Number);
+  const [endYear, endMonth, endDay] = end.split("-").map(Number);
 
   if (startYear !== endYear) {
-    return `${formatCalendarDate(weekStart, { month: "short", day: "numeric", year: "numeric" })}–${formatCalendarDate(weekEnd, { month: "short", day: "numeric", year: "numeric" })}`;
+    return `${formatCalendarDate(start, { month: "short", day: "numeric", year: "numeric" })}–${formatCalendarDate(end, { month: "short", day: "numeric", year: "numeric" })}`;
   }
 
   if (startMonth !== endMonth) {
-    return `${formatCalendarDate(weekStart, { month: "short", day: "numeric" })}–${formatCalendarDate(weekEnd, { month: "short", day: "numeric", year: "numeric" })}`;
+    return `${formatCalendarDate(start, { month: "short", day: "numeric" })}–${formatCalendarDate(end, { month: "short", day: "numeric", year: "numeric" })}`;
   }
 
-  return `${formatCalendarDate(weekStart, { month: "short", day: "numeric" })}–${endDay}, ${endYear}`;
+  return `${formatCalendarDate(start, { month: "short", day: "numeric" })}–${endDay}, ${endYear}`;
 }
