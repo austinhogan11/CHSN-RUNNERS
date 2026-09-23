@@ -129,7 +129,7 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     const run = within(screen.getByRole("article", { name: "Easy Run on 2026-09-14" }));
-    for (const value of ["Easy Run", "5.10", "41:00", "8:02"]) {
+    for (const value of ["Easy Run", "5.10 mi", "41:00", "8:02 /mi"]) {
       expect(run.getByText(value)).toBeInTheDocument();
     }
     expect(run.queryByText("Keep it relaxed")).not.toBeInTheDocument();
@@ -138,12 +138,14 @@ describe("App", () => {
     expect(run.queryByText("Completed")).not.toBeInTheDocument();
     expect(screen.getByText("Mon")).toBeInTheDocument();
     expect(screen.getByText("Sep 14")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Select Tuesday, Sep 15" }));
     const plannedRun = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
-    expect(plannedRun.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("7.00");
+    expect(plannedRun.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("7.00 mi");
     expect(plannedRun.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     expect(plannedRun.getAllByText("—")).toHaveLength(2);
     expect(plannedRun.getByRole("button", { name: "Edit Start time" })).toHaveTextContent("Add time");
-    expect(screen.getAllByRole("article")).toHaveLength(2);
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.queryByRole("article", { name: "Easy Run on 2026-09-14" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Rest" })).not.toBeInTheDocument();
 
     const summary = within(screen.getByRole("region", { name: "This Week" }));
@@ -180,7 +182,8 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findAllByRole("button", { name: /Add session for/ })).toHaveLength(7);
+    expect(await screen.findAllByRole("button", { name: /Select .*Oct/ })).toHaveLength(7);
+    expect(screen.getByRole("button", { name: "Add workout for Oct 5" })).toBeInTheDocument();
     expect(screen.queryAllByRole("article")).toHaveLength(0);
     expect(
       screen.getByRole("heading", { name: "Weekly Mileage Trend" }),
@@ -236,17 +239,19 @@ describe("App", () => {
 
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Add session for Sep 16" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Select Wednesday, Sep 16" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add workout for Sep 16" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Tempo Run" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "6" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
     const row = within(await screen.findByRole("article", { name: "Tempo Run on 2026-09-16" }));
-    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00");
+    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00 mi");
     expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("—");
     expect(row.getByLabelText("Average pace")).toHaveTextContent("—");
     const summary = within(screen.getByRole("region", { name: "This Week" }));
     expect(summary.getByText("6.00 mi")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select Wednesday, Sep 16" })).toHaveTextContent("6.00 mi");
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts", {
       method: "POST",
       headers: {
@@ -307,16 +312,17 @@ describe("App", () => {
 
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Add session for Sep 17" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Select Thursday, Sep 17" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add workout for Sep 17" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Tempo Run" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "6" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Duration (optional)" }), { target: { value: "40:00" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
     const row = within(await screen.findByRole("article", { name: "Tempo Run on 2026-09-17" }));
-    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00");
+    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00 mi");
     expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("40:00");
-    expect(row.getByLabelText("Average pace")).toHaveTextContent("6:40");
+    expect(row.getByLabelText("Average pace")).toHaveTextContent("6:40 /mi");
     expect(within(screen.getByRole("region", { name: "This Week" })).getAllByText("6.00 mi")).toHaveLength(2);
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts", {
       method: "POST",
@@ -371,7 +377,8 @@ describe("App", () => {
 
     render(<App />);
 
-    const row = within(await screen.findByRole("article", { name: "Workout on 2026-09-15" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Select Tuesday, Sep 15" }));
+    const row = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
     fireEvent.click(row.getByRole("button", { name: "Edit Distance" }));
     const input = row.getByRole("spinbutton", { name: "Distance" });
     fireEvent.change(input, { target: { value: "8" } });
@@ -413,7 +420,8 @@ describe("App", () => {
 
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Add session for Sep 17" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Select Thursday, Sep 17" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add workout for Sep 17" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Steady Run" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Distance" }), { target: { value: "4" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));

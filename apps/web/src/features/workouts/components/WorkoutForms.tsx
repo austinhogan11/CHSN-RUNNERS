@@ -75,14 +75,14 @@ export function AddSessionForm({ day, onCreate }: AddSessionFormProps) {
 
   if (!isOpen) {
     return (
-      <button className="add-session-button" type="button" aria-label={`Add session for ${formatCalendarDate(day, { month: "short", day: "numeric" })}`} onClick={open}>
-        +
+      <button className="add-session-button" type="button" aria-label={`Add workout for ${formatCalendarDate(day, { month: "short", day: "numeric" })}`} onClick={open}>
+        <span aria-hidden="true">+</span> Add workout
       </button>
     );
   }
 
   return (
-    <form className="add-session-form" aria-label={`New session on ${day}`} onSubmit={handleSubmit}>
+    <form className="add-session-form" aria-label={`New workout on ${day}`} onSubmit={handleSubmit}>
       <div className="add-title-field">
         <label className="sr-only" htmlFor={`${id}-title`}>Title</label>
         <input id={`${id}-title`} value={title} disabled={isSaving} placeholder="Workout title..." onChange={(event) => setTitle(event.target.value)} />
@@ -97,7 +97,7 @@ export function AddSessionForm({ day, onCreate }: AddSessionFormProps) {
         <input id={`${id}-duration`} inputMode="numeric" value={duration} disabled={isSaving} placeholder="MM:SS optional" onChange={(event) => setDuration(event.target.value)} />
       </div>
       <button className="compact-add-button" type="submit" disabled={isSaving}>{isSaving ? "Adding..." : "Add"}</button>
-      <button className="compact-cancel-button" type="button" aria-label="Cancel adding session" disabled={isSaving} onClick={() => { reset(); setIsOpen(false); }}>×</button>
+      <button className="compact-cancel-button" type="button" disabled={isSaving} onClick={() => { reset(); setIsOpen(false); }}>Cancel</button>
       {error && <p className="form-error add-session-error" role="alert">{error}</p>}
     </form>
   );
