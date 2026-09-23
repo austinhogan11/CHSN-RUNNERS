@@ -75,29 +75,27 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .week-totals dt { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .week-totals dd { font-size: 28px; font-weight: 550; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
 
-.workouts-section { --workout-date-column: 66px; --workout-row-columns: 74px minmax(160px, 1fr) 82px 78px 86px 26px; --workout-column-gap: 8px; width: 100%; margin-top: 32px; }
+.workouts-section { width: 100%; margin-top: 32px; }
 .workouts-section > .section-heading { margin-bottom: 16px; }
-.workout-table-header { display: grid; grid-template-columns: var(--workout-date-column) var(--workout-row-columns); gap: var(--workout-column-gap); align-items: center; padding: 9px 14px; border: 1px solid var(--border); border-bottom: 0; border-radius: 12px 12px 0 0; background: var(--surface); color: var(--muted); font-size: 9px; font-weight: 600; letter-spacing: 0.55px; text-transform: uppercase; }
-.workout-date-start-heading { grid-column: 1 / 3; }
-.workout-delete-heading { text-align: center; }
-.workout-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--border); border-radius: 0 0 12px 12px; overflow: hidden; background: var(--surface); }
-.workout-list > li + li { border-top: 1px solid var(--border); }
-.workout-day { display: grid; grid-template-columns: var(--workout-date-column) minmax(0, 1fr); gap: var(--workout-column-gap); padding: 0 14px; }
-.workout-day.is-today { box-shadow: inset 2px 0 var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
-.day-heading { padding: 9px 0; }
-.day-heading .today-label { display: block; margin-top: 6px; }
-.day-sessions { min-width: 0; }
-.day-sessions.is-empty { display: flex; align-items: center; min-height: 42px; }
-.session-row { display: grid; grid-template-columns: var(--workout-row-columns); align-items: center; gap: var(--workout-column-gap); min-height: 38px; padding: 5px 0; }
-.session-row + .session-row { border-top: 1px solid var(--border); }
-.day-sessions.is-empty .add-session-form { align-self: stretch; }
-.workout-date { display: flex; flex-direction: column; gap: 5px; }
-.workout-date span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
-.workout-date strong { font-size: 15px; font-weight: 550; white-space: nowrap; }
-.workout-title-cell { min-width: 0; }
-.workout-start { min-width: 0; color: var(--text-secondary); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.workout-week-board { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; width: 100%; margin: 0; padding: 1px; border-radius: 12px; background: var(--border); list-style: none; }
+.workout-day { display: flex; min-width: 0; min-height: 240px; flex-direction: column; background: var(--surface); }
+.workout-day:first-child { border-radius: 11px 0 0 11px; }
+.workout-day:last-child { border-radius: 0 11px 11px 0; }
+.workout-day.is-today { position: relative; z-index: 1; background: color-mix(in srgb, var(--accent) 5%, var(--surface)); box-shadow: inset 0 0 0 1px var(--accent); }
+.day-heading { min-height: 76px; padding: 13px 12px 10px; border-bottom: 1px solid var(--border); }
+.day-heading .today-label { display: block; margin-top: 5px; }
+.day-sessions { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 8px; padding: 8px; }
+.workout-date { display: flex; flex-direction: column; gap: 4px; }
+.workout-date span { color: var(--muted); font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: 1px; }
+.workout-date strong { font-size: 14px; font-weight: 550; white-space: nowrap; }
+.workout-card { position: relative; display: grid; min-width: 0; gap: 8px; padding: 10px; border: 1px solid color-mix(in srgb, var(--border) 75%, transparent); border-radius: 8px; background: var(--surface-raised); }
+.workout-title-cell { min-width: 0; padding-right: 18px; }
+.workout-card-metrics { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 3px 5px; }
+.workout-metric.workout-distance { width: 100%; margin-bottom: 1px; font-size: 14px; }
+.workout-start { min-width: 0; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .today-label { color: var(--accent); font-size: 11px; }
 .workout-metric { min-width: 0; font-size: 12px; font-weight: 550; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.metric-separator { color: var(--muted); font-size: 10px; }
 .editable-value { appearance: none; max-width: 100%; border: 0; border-radius: 4px; background: transparent; color: inherit; padding: 2px 3px; margin: -2px -3px; cursor: text; font: inherit; font-weight: inherit; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .editable-value:hover, .editable-value:focus-visible { background: var(--surface-raised); outline: 1px solid var(--accent-muted); }
 .editable-title { font-size: 13px; font-weight: 650; letter-spacing: -0.1px; }
@@ -120,23 +118,23 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .inline-select::after { content: "⌄"; position: absolute; right: 4px; color: currentColor; font-size: 9px; line-height: 1; pointer-events: none; }
 .inline-select select { width: 100%; min-width: 0; appearance: none; border: 0; border-radius: inherit; background: transparent; color: inherit; padding: 2px 14px 2px 3px; font: inherit; font-weight: inherit; letter-spacing: inherit; line-height: inherit; text-transform: inherit; white-space: nowrap; cursor: pointer; }
 .inline-select select:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
-.session-actions { position: relative; display: flex; align-items: center; justify-content: center; min-width: 24px; }
-.delete-session-button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 17px; line-height: 1; }
+.session-actions { position: absolute; top: 5px; right: 5px; display: flex; align-items: center; justify-content: center; min-width: 22px; }
+.session-actions.is-confirming { left: 5px; }
+.delete-session-button { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; }
 .delete-session-button:hover, .delete-session-button:focus-visible { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger-hover); outline: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); }
 .text-button, .add-session-button { appearance: none; border: 0; background: transparent; color: var(--muted); padding: 5px 0; cursor: pointer; font-size: 12px; }
 .text-button:hover, .add-session-button:hover { color: var(--accent); }
 .text-button:disabled, .add-session-button:disabled { cursor: default; opacity: 0.6; }
 .danger-button { color: var(--danger); }
 .danger-button:hover { color: var(--danger-hover); }
-.delete-confirmation { position: absolute; z-index: 4; right: 0; display: flex; align-items: center; gap: 8px; min-width: max-content; padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-raised); color: var(--text-secondary); box-shadow: 0 8px 24px color-mix(in srgb, var(--background) 85%, transparent); font-size: 11px; }
+.delete-confirmation { position: relative; z-index: 4; display: flex; width: 100%; flex-wrap: wrap; align-items: center; gap: 5px 8px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-raised); color: var(--text-secondary); box-shadow: 0 8px 24px color-mix(in srgb, var(--background) 85%, transparent); font-size: 11px; }
 .delete-confirmation .form-error { position: absolute; top: calc(100% + 3px); right: 0; width: max-content; padding: 3px 5px; border-radius: 3px; background: var(--background); }
-.add-session-button { display: block; width: 24px; margin: 1px 2px 4px auto; color: var(--text-secondary); padding: 1px 5px; font-size: 16px; line-height: 1.2; }
-.add-session-form { display: grid; grid-template-columns: minmax(160px, 1fr) 86px 120px auto 24px; align-items: center; gap: 6px; width: min(100%, 560px); padding: 6px 0 7px; border-top: 1px dashed var(--border); }
-.add-title-field { grid-column: 1; }
-.add-distance-field { grid-column: 2; }
-.add-duration-field { grid-column: 3; }
-.compact-add-button { grid-column: 4; }
-.compact-cancel-button { grid-column: 5; }
+.add-session-button { display: grid; place-items: center; width: 28px; height: 28px; margin: auto auto 2px; border: 1px solid var(--border); border-radius: 50%; color: var(--text-secondary); padding: 0; font-size: 18px; line-height: 1; }
+.is-today .add-session-button { border-color: var(--accent-muted); color: var(--accent); }
+.add-session-form { display: grid; grid-template-columns: minmax(0, 1fr) 24px; align-items: center; gap: 7px; width: 100%; padding: 9px; border: 1px solid var(--accent-muted); border-radius: 8px; background: var(--surface-raised); }
+.add-title-field, .add-distance-field, .add-duration-field, .add-session-error { grid-column: 1 / -1; }
+.compact-add-button { grid-column: 1; }
+.compact-cancel-button { grid-column: 2; }
 .add-session-form input, .add-session-form select { width: 100%; min-width: 0; border: 1px solid transparent; border-radius: 5px; background: var(--surface-raised); color: var(--text-primary); padding: 5px 7px; font: inherit; font-size: 12px; }
 .add-session-form input:hover, .add-session-form select:hover { border-color: var(--accent-muted); }
 .add-session-form input:focus, .add-session-form select:focus { border-color: var(--accent); outline: 0; background: var(--background); }
@@ -149,7 +147,6 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .compact-cancel-button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; font-size: 17px; }
 .compact-cancel-button:hover { background: var(--surface-raised); color: var(--text-primary); }
 .compact-add-button:disabled, .compact-cancel-button:disabled { cursor: default; opacity: 0.65; }
-.add-session-error { grid-column: 1 / -1; }
 .form-error { color: var(--danger); font-size: 12px; line-height: 1.4; }
 .empty-state { padding: 32px 24px; line-height: 1.6; }
 .empty-state .section-note { margin-top: 6px; }
@@ -162,23 +159,9 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
   .week-totals > div { min-width: auto; }
 }
 
-@media (max-width: 700px) {
-  .workout-table-header { display: none; }
-  .workout-list { border-radius: 12px; }
-  .session-row { grid-template-columns: 72px repeat(2, minmax(64px, 1fr)) 26px; row-gap: 8px; }
-  .workout-start { grid-column: 1; grid-row: 1; }
-  .workout-title-cell { grid-column: 2 / 4; grid-row: 1; }
-  .workout-distance { grid-column: 1; grid-row: 2; }
-  .workout-duration { grid-column: 2; grid-row: 2; }
-  .workout-pace { grid-column: 3; grid-row: 2; }
-  .session-actions { grid-column: 4; grid-row: 1; }
-  .add-session-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .add-title-field { grid-column: 1 / -1; grid-row: 1; }
-  .add-distance-field { grid-column: 1; grid-row: 2; }
-  .add-duration-field { grid-column: 2; grid-row: 2; }
-  .compact-add-button { grid-column: 1; grid-row: 3; }
-  .compact-cancel-button { grid-column: 2; grid-row: 3; justify-self: end; }
-  .add-session-error { grid-column: 1 / -1; }
+@media (max-width: 900px) {
+  .workout-week-board { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .workout-day, .workout-day:first-child, .workout-day:last-child { border-radius: 0; }
 }
 
 @media (max-width: 600px) {
@@ -193,14 +176,6 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
   .week-totals > div + div { padding-left: 20px; }
   .week-totals dd { font-size: 25px; }
   .workouts-section { margin-top: 28px; }
-  .workout-day { grid-template-columns: 64px minmax(0, 1fr); padding: 0 12px; }
-  .day-heading { padding-right: 10px; }
-  .workout-date strong { font-size: 13px; }
-  .session-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 12px; padding: 9px 0; }
-  .workout-start { grid-column: 1; grid-row: 1; }
-  .workout-title-cell { grid-column: 1 / -1; grid-row: 2; }
-  .workout-distance { grid-column: 1; grid-row: 3; }
-  .workout-duration { grid-column: 2; grid-row: 3; }
-  .workout-pace { grid-column: 1; grid-row: 4; }
-  .session-actions { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+  .workout-week-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workout-day { min-height: 210px; }
 }

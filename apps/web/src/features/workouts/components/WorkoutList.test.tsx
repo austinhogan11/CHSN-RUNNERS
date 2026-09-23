@@ -61,21 +61,25 @@ afterEach(() => {
 });
 
 describe("WorkoutList presentation", () => {
-  it("renders the simplified log fields without richer workout metadata", () => {
-    const { container } = renderList([{ ...workout, description: "Hidden details", start_time: "07:12:00" }]);
+  it("renders a Monday-through-Sunday board and compact workout cards", () => {
+    const { container } = renderList([{
+      ...workout,
+      description: "Hidden details",
+      start_time: "07:12:00",
+      distance: 5,
+      duration_seconds: 2400,
+      status: "completed",
+    }]);
 
-    const header = container.querySelector(".workout-table-header");
-    expect(header).not.toBeNull();
-    expect(Array.from(header?.children ?? []).map((cell) => cell.textContent)).toEqual([
-      "Date / Start",
-      "Workout title",
-      "Distance",
-      "Duration",
-      "Avg pace",
-      "",
+    const days = Array.from(container.querySelectorAll(".workout-day"));
+    expect(days).toHaveLength(7);
+    expect(days.map((day) => day.querySelector(".workout-date span")?.textContent)).toEqual([
+      "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",
     ]);
-    expect(header?.lastElementChild).toHaveClass("workout-delete-heading");
-    expect(screen.getAllByRole("listitem")).toHaveLength(7);
+    expect(days.map((day) => day.querySelector(".workout-date strong")?.textContent)).toEqual([
+      "Sep 14", "Sep 15", "Sep 16", "Sep 17", "Sep 18", "Sep 19", "Sep 20",
+    ]);
+    expect(container.querySelector(".workout-table-header")).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Add session for/ })).toHaveLength(7);
     expect(screen.getAllByRole("article")).toHaveLength(1);
     const row = within(screen.getByRole("article", { name: "Easy Run on 2026-09-18" }));
@@ -85,16 +89,22 @@ describe("WorkoutList presentation", () => {
     expect(row.queryByText("Hidden details")).not.toBeInTheDocument();
     expect(row.getByRole("button", { name: "Edit Start time" })).toHaveTextContent("7:12 AM");
     expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.00 mi");
-    expect(screen.getByText("Fri")).toBeInTheDocument();
-    expect(screen.getByText("Sep 18")).toBeInTheDocument();
+    expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("40:00");
+    expect(row.getByLabelText("Average pace")).toHaveTextContent("8:00 /mi");
+    for (const hiddenValue of [/^run$/i, /^completed$/i, /^planned$/i, /^actual$/i]) {
+      expect(row.queryByText(hiddenValue)).not.toBeInTheDocument();
+    }
   });
 
-  it("renders an empty week as compact date rows with plus actions", () => {
-    renderList([]);
+  it("renders an empty week as seven clean day columns with add actions only", () => {
+    const { container } = renderList([]);
     expect(screen.queryAllByRole("article")).toHaveLength(0);
     expect(screen.queryByRole("heading", { name: "Rest" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Add session for/ })).toHaveLength(7);
-    expect(screen.getByRole("button", { name: "Add session for Sep 14" })).toHaveTextContent("+");
+    const mondayAdd = screen.getByRole("button", { name: "Add session for Sep 14" });
+    expect(mondayAdd).toHaveTextContent("+");
+    expect(mondayAdd.closest(".day-sessions")?.children).toHaveLength(1);
+    expect(container).not.toHaveTextContent("Rest");
   });
 
   it("preserves multiple sessions on one date and edits only the selected session", async () => {
@@ -116,6 +126,7 @@ describe("WorkoutList presentation", () => {
     expect(screen.getByText("6:15 PM")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Add session for Sep 18/ })).toHaveLength(1);
     expect(container.querySelectorAll('time[datetime="2026-09-18"]')).toHaveLength(1);
+    expect(screen.getByText("2 workouts this week")).toBeInTheDocument();
   });
 
   it("renders an explicit rest session as an editable persisted workout", () => {

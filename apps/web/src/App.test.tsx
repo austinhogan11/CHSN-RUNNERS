@@ -141,7 +141,8 @@ describe("App", () => {
     const plannedRun = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
     expect(plannedRun.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("7.00 mi");
     expect(plannedRun.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
-    expect(plannedRun.getAllByText("—")).toHaveLength(3);
+    expect(plannedRun.getAllByText("—")).toHaveLength(2);
+    expect(plannedRun.getByRole("button", { name: "Edit Start time" })).toHaveTextContent("Add time");
     expect(screen.getAllByRole("article")).toHaveLength(2);
     expect(screen.queryByRole("heading", { name: "Rest" })).not.toBeInTheDocument();
 
