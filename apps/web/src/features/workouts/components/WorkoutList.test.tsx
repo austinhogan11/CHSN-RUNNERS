@@ -61,7 +61,7 @@ afterEach(() => {
 });
 
 describe("WorkoutList presentation", () => {
-  it("renders a Monday-through-Sunday board and compact workout cards", () => {
+  it("renders a Monday-through-Sunday board and compact session rows", () => {
     const { container } = renderList([{
       ...workout,
       description: "Hidden details",
@@ -83,14 +83,16 @@ describe("WorkoutList presentation", () => {
     expect(screen.getAllByRole("button", { name: /Add session for/ })).toHaveLength(7);
     expect(screen.getAllByRole("article")).toHaveLength(1);
     const row = within(screen.getByRole("article", { name: "Easy Run on 2026-09-18" }));
+    expect(row.getByRole("button", { name: "Edit Title" }).closest("article")).toHaveClass("session-row");
+    expect(row.getByRole("button", { name: "Edit Title" }).closest(".workout-day")).toHaveTextContent("Sep 18");
     expect(row.getByRole("button", { name: "Delete Easy Run" }).parentElement).toHaveClass("session-actions");
     expect(row.queryByRole("combobox", { name: "Edit Type" })).not.toBeInTheDocument();
     expect(row.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     expect(row.queryByText("Hidden details")).not.toBeInTheDocument();
     expect(row.getByRole("button", { name: "Edit Start time" })).toHaveTextContent("7:12 AM");
-    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.00 mi");
+    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.00");
     expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("40:00");
-    expect(row.getByLabelText("Average pace")).toHaveTextContent("8:00 /mi");
+    expect(row.getByLabelText("Average pace")).toHaveTextContent("8:00");
     for (const hiddenValue of [/^run$/i, /^completed$/i, /^planned$/i, /^actual$/i]) {
       expect(row.queryByText(hiddenValue)).not.toBeInTheDocument();
     }
@@ -179,7 +181,7 @@ describe("direct field editing", () => {
   it("shows actual distance before planned distance and edits the executed value", async () => {
     const onUpdate = vi.fn(async () => {});
     renderList([{ ...workout, planned_distance: 6, distance: 5.25 }], onUpdate);
-    expect(screen.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.25 mi");
+    expect(screen.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.25");
     edit("Distance");
     const input = screen.getByRole("spinbutton", { name: "Distance" });
     fireEvent.change(input, { target: { value: "5.5" } });
@@ -190,7 +192,7 @@ describe("direct field editing", () => {
   it("shows and edits planned distance when execution data is absent", async () => {
     const onUpdate = vi.fn(async () => {});
     renderList([workout], onUpdate);
-    expect(screen.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.00 mi");
+    expect(screen.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("5.00");
     edit("Distance");
     const input = screen.getByRole("spinbutton", { name: "Distance" });
     fireEvent.change(input, { target: { value: "6.5" } });
@@ -249,7 +251,7 @@ describe("direct field editing", () => {
     render(<StatefulList initial={[{ ...workout, distance: 5 }]} />);
     edit("Duration");
     enterValue("Duration", "40:00");
-    expect(await screen.findByText("8:00 /mi")).toBeInTheDocument();
+    expect(await screen.findByText("8:00")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit Avg. pace" })).not.toBeInTheDocument();
   });
 

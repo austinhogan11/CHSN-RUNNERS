@@ -88,8 +88,8 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
   }
 
   return (
-    <article className="workout-card" aria-label={`${title} on ${workout.date}`}>
-      <div className="workout-title-cell">
+    <article className="session-row" aria-label={`${title} on ${workout.date}`}>
+      <div className="workout-title-cell" title={title}>
         <InlineInputField
           label="Title"
           displayValue={displayTitle}
@@ -98,23 +98,19 @@ function WorkoutSession({ workout, onUpdate, onDelete }: WorkoutSessionProps) {
           onSave={(value) => onUpdate(workout.id, { title: value })}
           className={`editable-title${workout.title || workout.type === "rest" ? "" : " empty-value"}`}
         />
-      </div>
-
-      <div className="workout-card-metrics">
-        <div className="workout-metric workout-distance">
-          <InlineInputField label="Distance" displayValue={formatDistance(visibleDistance)} editValue={numberInput(visibleDistance)} parse={parseNullableDistance} onSave={(value) => onUpdate(workout.id, executed ? { distance: value } : { planned_distance: value })} inputType="number" inputMode="decimal" min="0" step="any" unit="mi" />
-        </div>
-        <div className="workout-metric workout-duration">
-          <InlineInputField label="Duration" displayValue={formatDuration(workout.duration_seconds)} editValue={durationInput(workout.duration_seconds)} parse={parseDurationInput} onSave={(value) => onUpdate(workout.id, { duration_seconds: value })} inputMode="numeric" placeholder="MM:SS" />
-        </div>
-        <span className="metric-separator" aria-hidden="true">·</span>
-        <div className="workout-metric workout-pace" aria-label="Average pace">
-          {formatPace(calculateAveragePaceSeconds(workout.duration_seconds, workout.distance))}
+        <div className="workout-start">
+          <InlineInputField label="Start time" displayValue={workout.start_time ? formatStartTime(workout.start_time) : "Add time"} editValue={workout.start_time ?? ""} parse={parseNullableText} onSave={(value) => onUpdate(workout.id, { start_time: value })} inputType="time" step="1" />
         </div>
       </div>
 
-      <div className="workout-start">
-        <InlineInputField label="Start time" displayValue={workout.start_time ? formatStartTime(workout.start_time) : "Add time"} editValue={workout.start_time ?? ""} parse={parseNullableText} onSave={(value) => onUpdate(workout.id, { start_time: value })} inputType="time" step="1" />
+      <div className="workout-metric workout-distance">
+        <InlineInputField label="Distance" displayValue={formatCompactDistance(visibleDistance)} editValue={numberInput(visibleDistance)} parse={parseNullableDistance} onSave={(value) => onUpdate(workout.id, executed ? { distance: value } : { planned_distance: value })} inputType="number" inputMode="decimal" min="0" step="any" unit="mi" />
+      </div>
+      <div className="workout-metric workout-duration">
+        <InlineInputField label="Duration" displayValue={formatDuration(workout.duration_seconds)} editValue={durationInput(workout.duration_seconds)} parse={parseDurationInput} onSave={(value) => onUpdate(workout.id, { duration_seconds: value })} inputMode="numeric" placeholder="MM:SS" />
+      </div>
+      <div className="workout-metric workout-pace" aria-label="Average pace">
+        {formatCompactPace(calculateAveragePaceSeconds(workout.duration_seconds, workout.distance))}
       </div>
 
       <div className={`session-actions${confirmingDelete ? " is-confirming" : ""}`}>
@@ -164,6 +160,14 @@ function numberInput(value: number | null): string {
 
 function durationInput(value: number | null): string {
   return value === null ? "" : formatDuration(value);
+}
+
+function formatCompactDistance(value: number | null): string {
+  return formatDistance(value).replace(" mi", "");
+}
+
+function formatCompactPace(value: number | null): string {
+  return formatPace(value).replace(" /mi", "");
 }
 
 function formatStartTime(value: string | null): string {

@@ -129,7 +129,7 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     const run = within(screen.getByRole("article", { name: "Easy Run on 2026-09-14" }));
-    for (const value of ["Easy Run", "5.10 mi", "41:00", "8:02 /mi"]) {
+    for (const value of ["Easy Run", "5.10", "41:00", "8:02"]) {
       expect(run.getByText(value)).toBeInTheDocument();
     }
     expect(run.queryByText("Keep it relaxed")).not.toBeInTheDocument();
@@ -139,7 +139,7 @@ describe("App", () => {
     expect(screen.getByText("Mon")).toBeInTheDocument();
     expect(screen.getByText("Sep 14")).toBeInTheDocument();
     const plannedRun = within(screen.getByRole("article", { name: "Workout on 2026-09-15" }));
-    expect(plannedRun.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("7.00 mi");
+    expect(plannedRun.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("7.00");
     expect(plannedRun.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     expect(plannedRun.getAllByText("—")).toHaveLength(2);
     expect(plannedRun.getByRole("button", { name: "Edit Start time" })).toHaveTextContent("Add time");
@@ -242,7 +242,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
     const row = within(await screen.findByRole("article", { name: "Tempo Run on 2026-09-16" }));
-    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00 mi");
+    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00");
     expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("—");
     expect(row.getByLabelText("Average pace")).toHaveTextContent("—");
     const summary = within(screen.getByRole("region", { name: "This Week" }));
@@ -314,9 +314,9 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
     const row = within(await screen.findByRole("article", { name: "Tempo Run on 2026-09-17" }));
-    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00 mi");
+    expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00");
     expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("40:00");
-    expect(row.getByLabelText("Average pace")).toHaveTextContent("6:40 /mi");
+    expect(row.getByLabelText("Average pace")).toHaveTextContent("6:40");
     expect(within(screen.getByRole("region", { name: "This Week" })).getAllByText("6.00 mi")).toHaveLength(2);
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts", {
       method: "POST",
