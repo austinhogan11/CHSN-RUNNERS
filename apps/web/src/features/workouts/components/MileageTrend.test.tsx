@@ -47,6 +47,7 @@ describe("MileageTrend", () => {
     const chart = screen.getByRole("group", { name: /Actual weekly mileage/ });
     const lines = chart.querySelectorAll("polyline");
     expect(lines).toHaveLength(1);
+    expect(chart.querySelector("title")).not.toBeInTheDocument();
     const actual = coordinates(lines[0]);
     expect(actual).toHaveLength(12);
     expect(actual[11][1]).toBeLessThan(actual[0][1]);

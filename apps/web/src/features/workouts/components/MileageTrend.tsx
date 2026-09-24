@@ -93,8 +93,7 @@ export function MileageTrend({ points, isLoading, error, isLatestWindow, onPrevi
 
       {points.length === 0 ? <p className="empty-state">No mileage history yet.</p> : (
         <div className="chart-container" ref={container}>
-          <svg className="mileage-chart" viewBox={`0 0 ${width} ${height}`} role="group" aria-labelledby={`${id}-title ${id}-description`}>
-            <title id={`${id}-title`}>Actual weekly mileage</title>
+          <svg className="mileage-chart" viewBox={`0 0 ${width} ${height}`} role="group" aria-label="Actual weekly mileage" aria-describedby={`${id}-description`}>
             <desc id={`${id}-description`}>
               {points.length} weeks, from {points[0].week_start} to {points[points.length - 1].week_start}.
               Empty weeks are shown at zero. The latest week in this window is on the right.
