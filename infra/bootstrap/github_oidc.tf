@@ -138,6 +138,19 @@ data "aws_iam_policy_document" "github_actions_permissions" {
   }
 
   statement {
+    sid = "RunnerCustomDomainCertificateRead"
+
+    actions = [
+      "acm:DescribeCertificate",
+      "acm:ListTagsForCertificate",
+    ]
+
+    resources = [
+      "arn:aws:acm:us-east-1:537690166345:certificate/7801107c-6f19-4e33-9eac-db1bc8587bc0",
+    ]
+  }
+
+  statement {
     sid = "RunnerWebObjects"
 
     actions = [
