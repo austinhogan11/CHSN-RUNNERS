@@ -10,6 +10,7 @@ resource "aws_cloudfront_distribution" "web" {
   enabled             = true
   default_root_object = "index.html"
   comment             = "CHSN Runners web frontend"
+  aliases             = ["chosenrunning.com", "www.chosenrunning.com"]
 
   origin {
     domain_name              = aws_s3_bucket.web.bucket_regional_domain_name
@@ -90,7 +91,9 @@ resource "aws_cloudfront_distribution" "web" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate.runner_custom_domain.arn
+    minimum_protocol_version = "TLSv1.2_2021"
+    ssl_support_method       = "sni-only"
   }
 
   price_class = "PriceClass_100"
