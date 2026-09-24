@@ -125,7 +125,7 @@ export function WorkoutList({
           )}
         </div>
 
-        {selectedWorkouts.length > 0 ? (
+        {selectedWorkouts.length > 0 && (
           <div className="selected-day-sessions">
             <div className="session-table-header" aria-hidden="true">
               <span>Workout</span>
@@ -139,8 +139,6 @@ export function WorkoutList({
               <WorkoutSession key={workout.id} workout={workout} onUpdate={onUpdate} onDelete={onDelete} />
             ))}
           </div>
-        ) : (
-          <p className="selected-day-empty">No workouts yet.</p>
         )}
         <AddSessionForm day={selectedDay} onCreate={onCreate} />
       </section>

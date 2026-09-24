@@ -144,7 +144,7 @@ describe("WorkoutList presentation", () => {
     expect(screen.queryByRole("heading", { name: "Rest" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Select .*Sep/ })).toHaveLength(7);
     expect(screen.getByRole("button", { name: "Add workout for Sep 14" })).toHaveTextContent("Add workout");
-    expect(screen.getByText("No workouts yet.")).toBeInTheDocument();
+    expect(screen.queryByText("No workouts yet.")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Monday, Sep 14, 2026" })).toBeInTheDocument();
     expect(container).not.toHaveTextContent("Rest");
   });
@@ -472,7 +472,7 @@ describe("compact session actions", () => {
     expect(within(confirmation).getByText("Delete this session?")).toBeInTheDocument();
     fireEvent.click(within(confirmation).getByRole("button", { name: "Confirm" }));
     await waitFor(() => expect(screen.queryByRole("article", { name: "Easy Run on 2026-09-18" })).not.toBeInTheDocument());
-    expect(screen.getByText("No workouts yet.")).toBeInTheDocument();
+    expect(screen.queryByText("No workouts yet.")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add workout for Sep 18" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Select Friday, Sep 18" })).toHaveTextContent("—");
   });
