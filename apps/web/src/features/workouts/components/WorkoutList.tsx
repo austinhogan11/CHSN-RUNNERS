@@ -10,19 +10,39 @@ import {
   hasActualExecution,
   parseDurationInput,
 } from "../utils";
-import { formatCalendarDate, formatLocalDate, getWeekDates } from "../../../utils/date";
+import { formatCalendarDate, formatLocalDate, formatWeekRange, getWeekDates } from "../../../utils/date";
 import { AddSessionForm } from "./WorkoutForms";
 import { InlineInputField } from "./InlineWorkoutFields";
 
 interface WorkoutListProps {
   weekStart: string;
   workouts: Workout[];
+  actualDistance?: number;
+  isCurrentWeek?: boolean;
+  isWeekLoading?: boolean;
+  weekError?: string | null;
+  onPreviousWeek?: () => void;
+  onNextWeek?: () => void;
+  onCurrentWeek?: () => void;
   onCreate: (workout: WorkoutCreate) => Promise<void>;
   onUpdate: (workoutId: string, changes: WorkoutUpdate) => Promise<void>;
   onDelete: (workoutId: string) => Promise<void>;
 }
 
-export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete }: WorkoutListProps) {
+export function WorkoutList({
+  weekStart,
+  workouts,
+  actualDistance,
+  isCurrentWeek = true,
+  isWeekLoading = false,
+  weekError = null,
+  onPreviousWeek = () => {},
+  onNextWeek = () => {},
+  onCurrentWeek = () => {},
+  onCreate,
+  onUpdate,
+  onDelete,
+}: WorkoutListProps) {
   const today = formatLocalDate(new Date());
   const weekDates = getWeekDates(weekStart);
   const [selectedWeekdayIndex, setSelectedWeekdayIndex] = useState(() => (
@@ -37,6 +57,9 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
   }
   const selectedWorkouts = workoutsByDate.get(selectedDay) ?? [];
   const selectedMileage = dayMileage(selectedWorkouts);
+  const weeklyMileage = actualDistance ?? workouts.reduce((total, workout) => (
+    hasActualExecution(workout) ? total + (workout.distance ?? 0) : total
+  ), 0);
 
   return (
     <section className="workouts-section" aria-labelledby="workouts-heading">
@@ -45,6 +68,25 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
         <span className="section-note">
           {workouts.length} {workouts.length === 1 ? "workout" : "workouts"} this week
         </span>
+      </div>
+
+      <div className="workout-week-toolbar">
+        <div className="workout-week-navigation">
+          <div className="workout-week-controls">
+            <button className="navigation-button" type="button" aria-label="Previous week" disabled={isWeekLoading} onClick={onPreviousWeek}>‹</button>
+            <strong>{formatWeekRange(weekStart)}</strong>
+            <button className="navigation-button" type="button" aria-label="Next week" disabled={isWeekLoading} onClick={onNextWeek}>›</button>
+          </div>
+          <div className="week-navigation-feedback" aria-live="polite">
+            {!isCurrentWeek && <button className="current-week-button" type="button" disabled={isWeekLoading} onClick={onCurrentWeek}>Current week</button>}
+            {isWeekLoading && <span className="sr-only" role="status">Updating week</span>}
+            {!isWeekLoading && weekError && <span className="navigation-status error" role="alert">{weekError}</span>}
+          </div>
+        </div>
+        <div className="weekly-mileage">
+          <span>Weekly mileage</span>
+          <strong>{formatDistance(weeklyMileage)}</strong>
+        </div>
       </div>
 
       <ul className="week-overview" aria-label="Week overview">
@@ -83,7 +125,7 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
           )}
         </div>
 
-        {selectedWorkouts.length > 0 ? (
+        {selectedWorkouts.length > 0 && (
           <div className="selected-day-sessions">
             <div className="session-table-header" aria-hidden="true">
               <span>Workout</span>
@@ -91,14 +133,12 @@ export function WorkoutList({ weekStart, workouts, onCreate, onUpdate, onDelete 
               <span>Duration</span>
               <span>Pace</span>
               <span>Start</span>
-              <span>Action</span>
+              <span />
             </div>
             {selectedWorkouts.map((workout) => (
               <WorkoutSession key={workout.id} workout={workout} onUpdate={onUpdate} onDelete={onDelete} />
             ))}
           </div>
-        ) : (
-          <p className="selected-day-empty">No workouts yet.</p>
         )}
         <AddSessionForm day={selectedDay} onCreate={onCreate} />
       </section>

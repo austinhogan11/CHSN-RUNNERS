@@ -124,9 +124,10 @@ describe("App", () => {
       await screen.findByText("Weekly Mileage Trend"),
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByText("This Week"),
-    ).toBeInTheDocument();
+    const workouts = within(screen.getByRole("region", { name: "Workouts" }));
+    expect(workouts.getByText("Sep 14–20, 2026")).toBeInTheDocument();
+    expect(workouts.getByRole("button", { name: "Previous week" })).toBeInTheDocument();
+    expect(workouts.getByRole("button", { name: "Next week" })).toBeInTheDocument();
 
     const run = within(screen.getByRole("article", { name: "Easy Run on 2026-09-14" }));
     for (const value of ["Easy Run", "5.10 mi", "41:00", "8:02 /mi"]) {
@@ -148,10 +149,11 @@ describe("App", () => {
     expect(screen.queryByRole("article", { name: "Easy Run on 2026-09-14" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Rest" })).not.toBeInTheDocument();
 
-    const summary = within(screen.getByRole("region", { name: "This Week" }));
-    expect(summary.getByText("30.00 mi")).toBeInTheDocument();
-    expect(summary.getByText("5.10 mi")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /Planned and actual weekly mileage/ })).toBeInTheDocument();
+    expect(within(workouts.getByText("Weekly mileage").parentElement!).getByText("5.10 mi")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /This Week|Week Summary/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Planned mileage")).not.toBeInTheDocument();
+    expect(screen.queryByText("Actual mileage")).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /Actual weekly mileage/ })).toBeInTheDocument();
     expect(clerk.getToken).toHaveBeenCalledOnce();
     expect(fetch).toHaveBeenCalledWith(
       expect.stringMatching(/^\/api\/(weeks|trends\/mileage)/),
@@ -188,12 +190,11 @@ describe("App", () => {
     expect(
       screen.getByRole("heading", { name: "Weekly Mileage Trend" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /Planned and actual weekly mileage/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByText("View weekly data"));
-    expect(within(screen.getByRole("table")).getByText("30.00 mi")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /Actual weekly mileage/ })).toBeInTheDocument();
+    expect(screen.queryByText("View weekly data")).not.toBeInTheDocument();
 
-    const summary = screen.getByRole("region", { name: "This Week" });
-    expect(within(summary).getAllByText("0.00 mi")).toHaveLength(2);
+    const workouts = within(screen.getByRole("region", { name: "Workouts" }));
+    expect(within(workouts.getByText("Weekly mileage").parentElement!).getByText("0.00 mi")).toBeInTheDocument();
     expect(screen.queryByText("Easy Run")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Unable to load runner dashboard."),
@@ -249,8 +250,8 @@ describe("App", () => {
     expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00 mi");
     expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("—");
     expect(row.getByLabelText("Average pace")).toHaveTextContent("—");
-    const summary = within(screen.getByRole("region", { name: "This Week" }));
-    expect(summary.getByText("6.00 mi")).toBeInTheDocument();
+    const workouts = within(screen.getByRole("region", { name: "Workouts" }));
+    expect(within(workouts.getByText("Weekly mileage").parentElement!).getByText("0.00 mi")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Select Wednesday, Sep 16" })).toHaveTextContent("6.00 mi");
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts", {
       method: "POST",
@@ -323,7 +324,8 @@ describe("App", () => {
     expect(row.getByRole("button", { name: "Edit Distance" })).toHaveTextContent("6.00 mi");
     expect(row.getByRole("button", { name: "Edit Duration" })).toHaveTextContent("40:00");
     expect(row.getByLabelText("Average pace")).toHaveTextContent("6:40 /mi");
-    expect(within(screen.getByRole("region", { name: "This Week" })).getAllByText("6.00 mi")).toHaveLength(2);
+    const workouts = within(screen.getByRole("region", { name: "Workouts" }));
+    expect(within(workouts.getByText("Weekly mileage").parentElement!).getByText("6.00 mi")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts", {
       method: "POST",
       headers: {
@@ -384,8 +386,8 @@ describe("App", () => {
     fireEvent.change(input, { target: { value: "8" } });
     fireEvent.keyDown(input, { key: "Enter" });
 
-    const summary = within(screen.getByRole("region", { name: "This Week" }));
-    expect(await summary.findByText("13.10 mi")).toBeInTheDocument();
+    const workouts = within(screen.getByRole("region", { name: "Workouts" }));
+    expect(await within(workouts.getByText("Weekly mileage").parentElement!).findByText("13.10 mi")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/workouts/workout-2", {
       method: "PATCH",
       headers: {
@@ -456,7 +458,7 @@ describe("App", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", { name: "This Week" }),
+      await screen.findByRole("heading", { name: "Workouts" }),
     ).toBeInTheDocument();
     const options = { headers: { Authorization: "Bearer session-token" } };
     expect(fetchMock).toHaveBeenCalledWith(`/api/weeks/${weekStart}`, options);
@@ -489,19 +491,17 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByRole("heading", { name: "This Week" })).toBeInTheDocument();
-    const currentSummary = screen.getByRole("region", { name: "This Week" });
-    expect(within(currentSummary).getByRole("button", { name: "Previous week" })).toBeInTheDocument();
-    expect(within(currentSummary).getByRole("button", { name: "Next week" })).toBeInTheDocument();
-    expect(document.querySelector(".week-navigation")).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Workouts" })).toBeInTheDocument();
+    const currentWorkouts = screen.getByRole("region", { name: "Workouts" });
+    expect(within(currentWorkouts).getByRole("button", { name: "Previous week" })).toBeInTheDocument();
+    expect(within(currentWorkouts).getByRole("button", { name: "Next week" })).toBeInTheDocument();
     expect(screen.getByText("Sep 21–27, 2026")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Select Wednesday, Sep 23, today" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: "Select Thursday, Sep 24" }));
     fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
 
     expect(await screen.findByRole("heading", { name: "Thursday, Sep 17, 2026" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Week Summary" })).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Week Summary" })).getByRole("button", { name: "Current week" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Workouts" })).getByRole("button", { name: "Current week" })).toBeInTheDocument();
     expect(screen.getByText("Sep 14–20, 2026")).toBeInTheDocument();
     expect(screen.getByRole("article", { name: "Past Run on 2026-09-17" })).toBeInTheDocument();
     expect(screen.queryByText("Current Run")).not.toBeInTheDocument();
@@ -513,13 +513,13 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next week" }));
     expect(await screen.findByRole("heading", { name: "Thursday, Oct 1, 2026" })).toBeInTheDocument();
     expect(screen.getByText("Sep 28–Oct 4, 2026")).toBeInTheDocument();
-    expect(screen.getByText("No workouts yet.")).toBeInTheDocument();
+    expect(screen.queryByText("No workouts yet.")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add workout for Oct 1" })).toBeInTheDocument();
     expect(screen.queryByText("Today")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Current week" }));
     expect(await screen.findByRole("heading", { name: "Thursday, Sep 24, 2026" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "This Week" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Workouts" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Current week" })).not.toBeInTheDocument();
     expect(screen.getByText("Today")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Weekly Mileage Trend" })).toBeInTheDocument();
@@ -535,10 +535,11 @@ describe("App", () => {
     const trendWindow = (endWeekStart: string) => {
       const [year, month, day] = endWeekStart.split("-").map(Number);
       const end = new Date(Date.UTC(year, month - 1, day));
+      const mileageOffset = endWeekStart === "2026-09-21" ? 0 : endWeekStart === "2026-09-14" ? 10 : 20;
       return Array.from({ length: 12 }, (_, index) => {
         const week = new Date(end);
         week.setUTCDate(end.getUTCDate() - (11 - index) * 7);
-        return { week_start: week.toISOString().slice(0, 10), planned_distance: index, actual_distance: index };
+        return { week_start: week.toISOString().slice(0, 10), planned_distance: index, actual_distance: index + mileageOffset };
       });
     };
     const fetchMock = vi.fn(async (url: string) => {
@@ -555,23 +556,26 @@ describe("App", () => {
     const trendRegion = await screen.findByRole("region", { name: "Weekly Mileage Trend" });
     const previousTrend = within(trendRegion).getByRole("button", { name: "Previous 12-week trend window" });
     const nextTrend = within(trendRegion).getByRole("button", { name: "Next 12-week trend window" });
-    expect(within(trendRegion).getByText("12 weeks · Jul 6–Sep 21, 2026 · miles")).toBeInTheDocument();
+    expect(within(trendRegion).getByLabelText("Sep 21: 11.00 miles")).toBeInTheDocument();
+    expect(within(trendRegion).getByLabelText("Week-over-week mileage change")).toHaveTextContent("+1.00 mi · +10%");
     expect(nextTrend).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Select Thursday, Sep 24" }));
     fireEvent.click(screen.getByRole("button", { name: "Next week" }));
     expect(await screen.findByRole("heading", { name: "Thursday, Oct 1, 2026" })).toBeInTheDocument();
     fireEvent.click(previousTrend);
-    expect(await within(trendRegion).findByText("12 weeks · Jun 29–Sep 14, 2026 · miles")).toBeInTheDocument();
+    expect(await within(trendRegion).findByLabelText("Sep 14: 21.00 miles")).toBeInTheDocument();
+    expect(within(trendRegion).getByLabelText("Week-over-week mileage change")).toHaveTextContent("+1.00 mi · +5%");
     expect(screen.getByRole("heading", { name: "Thursday, Oct 1, 2026" })).toBeInTheDocument();
     expect(nextTrend).toBeEnabled();
     expect(fetchMock).toHaveBeenCalledWith("/api/trends/mileage?end=2026-09-20&weeks=12", { headers: { Authorization: "Bearer session-token" } });
 
     fireEvent.click(previousTrend);
-    expect(await within(trendRegion).findByText("12 weeks · Jun 22–Sep 7, 2026 · miles")).toBeInTheDocument();
+    expect(await within(trendRegion).findByLabelText("Sep 7: 31.00 miles")).toBeInTheDocument();
+    expect(within(trendRegion).getByLabelText("Week-over-week mileage change")).toHaveTextContent("+1.00 mi · +3%");
     expect(fetchMock).toHaveBeenCalledWith("/api/trends/mileage?end=2026-09-13&weeks=12", { headers: { Authorization: "Bearer session-token" } });
     fireEvent.click(nextTrend);
-    expect(await within(trendRegion).findByText("12 weeks · Jun 29–Sep 14, 2026 · miles")).toBeInTheDocument();
+    expect(await within(trendRegion).findByLabelText("Sep 14: 21.00 miles")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Thursday, Oct 1, 2026" })).toBeInTheDocument();
   });
 
@@ -594,8 +598,8 @@ describe("App", () => {
     fireEvent.click(within(trendRegion).getByRole("button", { name: "Previous 12-week trend window" }));
 
     expect(await within(trendRegion).findByRole("alert")).toHaveTextContent("Unable to load mileage trend.");
-    expect(within(trendRegion).getByText("12 weeks · Jul 6–Sep 21, 2026 · miles")).toBeInTheDocument();
-    expect(within(trendRegion).getByRole("img", { name: /Planned and actual weekly mileage/ })).toBeInTheDocument();
+    expect(within(trendRegion).getByLabelText("Sep 21: 11.00 miles")).toBeInTheDocument();
+    expect(within(trendRegion).getByRole("group", { name: /Actual weekly mileage/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Wednesday, Sep 23, 2026" })).toBeInTheDocument();
   });
 
@@ -615,7 +619,7 @@ describe("App", () => {
     expect(within(trendRegion).getByRole("status")).toHaveTextContent("Updating mileage trend");
     expect(within(trendRegion).getByRole("status")).toHaveClass("sr-only");
     expect(within(trendRegion).getByRole("button", { name: "Previous 12-week trend window" })).toBeDisabled();
-    expect(within(trendRegion).getByRole("img", { name: /Planned and actual weekly mileage/ })).toBeInTheDocument();
+    expect(within(trendRegion).getByRole("group", { name: /Actual weekly mileage/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Wednesday, Sep 23, 2026" })).toBeInTheDocument();
   });
 
@@ -633,7 +637,7 @@ describe("App", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load selected week.");
     expect(screen.getByText("Sep 21–27, 2026")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "This Week" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Workouts" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Select Wednesday, Sep 23, today" })).toHaveAttribute("aria-pressed", "true");
   });
 

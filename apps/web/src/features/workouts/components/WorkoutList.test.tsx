@@ -91,6 +91,7 @@ describe("WorkoutList presentation", () => {
     const row = within(screen.getByRole("article", { name: "Easy Run on 2026-09-18" }));
     expect(row.getByRole("button", { name: "Edit Title" }).closest("article")).toHaveClass("session-row");
     expect(row.getByRole("button", { name: "Delete Easy Run" }).parentElement).toHaveClass("session-actions");
+    expect(screen.queryByText("Action")).not.toBeInTheDocument();
     expect(row.queryByRole("combobox", { name: "Edit Type" })).not.toBeInTheDocument();
     expect(row.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     expect(row.queryByText("Hidden details")).not.toBeInTheDocument();
@@ -103,6 +104,36 @@ describe("WorkoutList presentation", () => {
     }
   });
 
+  it("keeps week navigation and actual mileage in the workouts section", () => {
+    const onPreviousWeek = vi.fn();
+    const onNextWeek = vi.fn();
+    const onCurrentWeek = vi.fn();
+    render(
+      <WorkoutList
+        weekStart="2026-09-14"
+        workouts={[workout]}
+        actualDistance={5.25}
+        isCurrentWeek={false}
+        onPreviousWeek={onPreviousWeek}
+        onNextWeek={onNextWeek}
+        onCurrentWeek={onCurrentWeek}
+        onCreate={noCreate}
+        onUpdate={noUpdate}
+        onDelete={noDelete}
+      />,
+    );
+
+    const section = within(screen.getByRole("region", { name: "Workouts" }));
+    expect(section.getByText("Sep 14–20, 2026")).toBeInTheDocument();
+    expect(section.getByText("Weekly mileage").parentElement).toHaveTextContent("5.25 mi");
+    fireEvent.click(section.getByRole("button", { name: "Previous week" }));
+    fireEvent.click(section.getByRole("button", { name: "Next week" }));
+    fireEvent.click(section.getByRole("button", { name: "Current week" }));
+    expect(onPreviousWeek).toHaveBeenCalledOnce();
+    expect(onNextWeek).toHaveBeenCalledOnce();
+    expect(onCurrentWeek).toHaveBeenCalledOnce();
+  });
+
   it("renders an empty selected day without fake workout content", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-09-23T12:00:00"));
@@ -113,7 +144,7 @@ describe("WorkoutList presentation", () => {
     expect(screen.queryByRole("heading", { name: "Rest" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Select .*Sep/ })).toHaveLength(7);
     expect(screen.getByRole("button", { name: "Add workout for Sep 14" })).toHaveTextContent("Add workout");
-    expect(screen.getByText("No workouts yet.")).toBeInTheDocument();
+    expect(screen.queryByText("No workouts yet.")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Monday, Sep 14, 2026" })).toBeInTheDocument();
     expect(container).not.toHaveTextContent("Rest");
   });
@@ -441,7 +472,7 @@ describe("compact session actions", () => {
     expect(within(confirmation).getByText("Delete this session?")).toBeInTheDocument();
     fireEvent.click(within(confirmation).getByRole("button", { name: "Confirm" }));
     await waitFor(() => expect(screen.queryByRole("article", { name: "Easy Run on 2026-09-18" })).not.toBeInTheDocument());
-    expect(screen.getByText("No workouts yet.")).toBeInTheDocument();
+    expect(screen.queryByText("No workouts yet.")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add workout for Sep 18" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Select Friday, Sep 18" })).toHaveTextContent("—");
   });

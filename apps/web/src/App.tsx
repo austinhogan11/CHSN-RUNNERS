@@ -10,7 +10,6 @@ import {
   WorkoutApiError,
 } from "./features/workouts/api";
 import { MileageTrend } from "./features/workouts/components/MileageTrend";
-import { WeekSummary } from "./features/workouts/components/WeekSummary";
 import { WorkoutList } from "./features/workouts/components/WorkoutList";
 import type {
   MileageTrendPoint,
@@ -206,21 +205,18 @@ function Dashboard() {
         onNext={() => navigateTrend(addCalendarDays(trendEndWeekStart, 7))}
       />
 
-      <WeekSummary
-        summary={week}
-        isCurrentWeek={displayedWeekStart === currentWeekStart}
-        isLoading={isWeekLoading}
-        error={weekError}
-        onPrevious={() => navigateToWeek(addCalendarDays(displayedWeekStart, -7))}
-        onNext={() => navigateToWeek(addCalendarDays(displayedWeekStart, 7))}
-        onCurrent={() => navigateToWeek(currentWeekStart)}
-      />
-
       {refreshNotice && <p className="mutation-notice" role="status">{refreshNotice}</p>}
 
       <WorkoutList
         weekStart={week.week_start}
         workouts={week.workouts}
+        actualDistance={week.actual_distance}
+        isCurrentWeek={displayedWeekStart === currentWeekStart}
+        isWeekLoading={isWeekLoading}
+        weekError={weekError}
+        onPreviousWeek={() => navigateToWeek(addCalendarDays(displayedWeekStart, -7))}
+        onNextWeek={() => navigateToWeek(addCalendarDays(displayedWeekStart, 7))}
+        onCurrentWeek={() => navigateToWeek(currentWeekStart)}
         onCreate={handleCreate}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
