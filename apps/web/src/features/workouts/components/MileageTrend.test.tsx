@@ -35,22 +35,22 @@ afterEach(() => {
 });
 
 describe("MileageTrend", () => {
-  it("plots both mileage series chronologically, including every zero-mile week", () => {
+  it("plots actual mileage chronologically and ignores planned mileage when scaling", () => {
     renderTrend();
-    const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
+    const chart = screen.getByRole("img", { name: /Actual weekly mileage/ });
     const lines = chart.querySelectorAll("polyline");
-    expect(lines).toHaveLength(2);
-    const [planned, actual] = Array.from(lines, coordinates);
-    expect(planned).toHaveLength(12);
+    expect(lines).toHaveLength(1);
+    const actual = coordinates(lines[0]);
     expect(actual).toHaveLength(12);
     for (let index = 0; index < 11; index++) {
-      expect(planned[index][1]).toBe(planned[0][1]);
       expect(actual[index][1]).toBe(actual[0][1]);
-      expect(planned[index + 1][0]).toBeGreaterThan(planned[index][0]);
+      expect(actual[index + 1][0]).toBeGreaterThan(actual[index][0]);
     }
-    // Larger mileage is higher on the chart, and the current week is rightmost.
-    expect(planned[11][1]).toBeLessThan(actual[11][1]);
     expect(actual[11][1]).toBeLessThan(actual[0][1]);
+    expect(actual[11][1]).toBeLessThan(220);
+    expect(screen.getByLabelText("Chart legend")).toHaveTextContent("Actual");
+    expect(screen.queryByText("Planned")).not.toBeInTheDocument();
+    expect(chart.querySelector(".planned")).not.toBeInTheDocument();
     expect(chart).toHaveTextContent("6/29");
     expect(chart).toHaveTextContent("9/14");
   });
@@ -61,15 +61,15 @@ describe("MileageTrend", () => {
     const rows = within(screen.getByRole("table")).getAllByRole("row");
     expect(rows).toHaveLength(13);
     expect(rows[1]).toHaveTextContent("2026-06-29");
-    expect(within(rows[1]).getAllByText("0.00 mi")).toHaveLength(2);
+    expect(within(rows[1]).getByText("0.00 mi")).toBeInTheDocument();
     expect(rows[12]).toHaveTextContent("2026-09-14");
-    expect(rows[12]).toHaveTextContent("30.00 mi");
     expect(rows[12]).toHaveTextContent("5.10 mi");
+    expect(screen.queryByRole("columnheader", { name: "Planned" })).not.toBeInTheDocument();
   });
 
   it("keeps an all-zero history visible on a valid mileage scale", () => {
     renderTrend(points.map((point) => ({ ...point, planned_distance: 0, actual_distance: 0 })));
-    const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
+    const chart = screen.getByRole("img", { name: /Actual weekly mileage/ });
     for (const line of chart.querySelectorAll("polyline")) {
       const plotted = coordinates(line);
       expect(plotted).toHaveLength(12);
@@ -94,7 +94,7 @@ describe("MileageTrend", () => {
 
     renderTrend();
 
-    const chart = screen.getByRole("img", { name: /Planned and actual weekly mileage/ });
+    const chart = screen.getByRole("img", { name: /Actual weekly mileage/ });
     for (const line of chart.querySelectorAll("polyline")) {
       expect(coordinates(line)).toHaveLength(12);
     }

@@ -39,12 +39,11 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .section-note { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
 .accent-text { color: var(--accent); }
 
-/* The chart owns the largest surface; the weekly totals remain a compact strip. */
+/* The chart owns the largest dashboard surface. */
 .trend-panel { margin-top: 32px; padding: 26px 28px 18px; }
 .chart-legend { display: flex; gap: 24px; margin: 22px 0 4px; font-size: 12px; color: var(--text-secondary); }
 .chart-legend > span { display: flex; align-items: center; gap: 8px; }
 .legend-line { width: 22px; border-top: 2px solid; }
-.legend-line.planned { border-color: var(--planned); border-top-style: dashed; }
 .legend-line.actual { border-color: var(--accent); }
 .chart-container { width: 100%; }
 .mileage-chart { display: block; width: 100%; color: var(--accent); }
@@ -52,10 +51,8 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .chart-grid text, .chart-label { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .chart-label.current { fill: var(--accent); font-weight: 600; }
 .chart-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.chart-line.planned { stroke: var(--planned); stroke-dasharray: 6 5; }
 .chart-line.actual { stroke: var(--accent); }
 .chart-dot { fill: var(--surface); stroke-width: 2; }
-.chart-dot.planned { stroke: var(--planned); }
 .chart-dot.actual { stroke: var(--accent); }
 .chart-footer { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; padding: 0 2px 12px; }
 .chart-data { border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
@@ -75,30 +72,27 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .trend-navigation { display: flex; gap: 7px; margin-left: auto; }
 .trend-range { min-height: 18px; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trend-navigation-feedback { min-height: 16px; margin-top: 7px; }
-.week-summary { display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-top: 16px; padding: 23px 28px; }
-.week-summary-heading { width: 230px; }
-.week-title-controls { display: grid; grid-template-columns: 30px minmax(0, 1fr) 30px; align-items: center; gap: 10px; }
-.week-title-controls h2 { text-align: center; }
 .current-week-button { appearance: none; border: 0; background: transparent; color: var(--muted); padding: 5px 0 0; cursor: pointer; font-size: 11px; }
 .current-week-button:hover, .current-week-button:focus-visible { color: var(--accent); outline: 0; text-decoration: underline; text-underline-offset: 3px; }
 .current-week-button:disabled { cursor: default; opacity: 0.5; }
-.week-summary .section-note { margin-top: 6px; text-align: center; }
 .week-navigation-feedback { display: flex; min-height: 20px; align-items: center; justify-content: center; gap: 8px; }
-.week-totals { display: flex; gap: 56px; }
-.week-totals > div { min-width: 142px; }
-.week-totals > div + div { padding-left: 32px; border-left: 1px solid var(--border); }
-.week-totals dt { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-.week-totals dd { font-size: 28px; font-weight: 550; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
 
 .workouts-section { width: 100%; margin-top: 32px; }
 .workouts-section > .section-heading { margin-bottom: 16px; }
+.workout-week-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 14px; }
+.workout-week-navigation { min-width: 230px; }
+.workout-week-controls { display: grid; grid-template-columns: 30px minmax(150px, 1fr) 30px; align-items: center; gap: 10px; }
+.workout-week-controls strong { text-align: center; font-size: 14px; font-weight: 550; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.weekly-mileage { display: grid; justify-items: end; gap: 3px; text-align: right; }
+.weekly-mileage span { color: var(--muted); font-size: 11px; }
+.weekly-mileage strong { color: var(--accent); font-size: 22px; font-weight: 600; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
 .week-overview { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; width: 100%; margin: 0; padding: 1px; border-radius: 12px; background: var(--border); list-style: none; }
 .week-overview > li { min-width: 0; }
 .overview-day { display: flex; width: 100%; min-height: 104px; flex-direction: column; align-items: flex-start; gap: 5px; border: 0; background: var(--surface); color: var(--text-primary); padding: 13px 12px; cursor: pointer; text-align: left; }
 .week-overview > li:first-child .overview-day { border-radius: 11px 0 0 11px; }
 .week-overview > li:last-child .overview-day { border-radius: 0 11px 11px 0; }
 .overview-day:hover { background: var(--surface-raised); }
-.overview-day[aria-pressed="true"] { position: relative; z-index: 1; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); box-shadow: inset 0 0 0 1px var(--accent); }
+.overview-day[aria-pressed="true"] { position: relative; z-index: 1; background: var(--accent-bg); box-shadow: inset 0 0 0 1px var(--accent); }
 .overview-day.is-today:not([aria-pressed="true"]) { box-shadow: inset 0 -2px var(--accent-muted); }
 .overview-weekday { color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: 1px; text-transform: uppercase; }
 .overview-day strong { font-size: 14px; font-weight: 550; white-space: nowrap; }
@@ -175,12 +169,10 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
 .empty-state { padding: 32px 24px; line-height: 1.6; }
 .empty-state .section-note { margin-top: 6px; }
 .page-message { margin-top: 32px; padding: 32px; }
-.mutation-notice { margin: 18px 0 -12px; color: #e4d49d; font-size: 12px; }
+.mutation-notice { margin: 18px 0 -12px; color: var(--text-secondary); font-size: 12px; }
 
 @media (max-width: 1100px) {
   .dashboard { width: calc(100% - 48px); }
-  .week-totals { gap: 24px; }
-  .week-totals > div { min-width: auto; }
 }
 
 @media (max-width: 800px) {
@@ -211,12 +203,11 @@ h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
   .trend-panel .section-heading { align-items: flex-start; }
   h2 { font-size: 18px; }
   .chart-legend { margin-top: 18px; }
-  .week-summary { align-items: stretch; flex-direction: column; gap: 22px; padding: 22px 20px; }
-  .week-summary-heading { width: 100%; }
-  .week-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .week-totals > div + div { padding-left: 20px; }
-  .week-totals dd { font-size: 25px; }
   .workouts-section { margin-top: 28px; }
+  .workout-week-toolbar { flex-wrap: wrap; }
+  .workout-week-navigation { min-width: min(100%, 230px); }
+  .workout-week-controls { grid-template-columns: 30px minmax(0, 1fr) 30px; }
+  .weekly-mileage { margin-left: auto; }
   .selected-day-panel { padding: 16px 14px 14px; }
   .selected-day-header { align-items: flex-start; flex-direction: column; gap: 7px; }
 }

@@ -91,6 +91,7 @@ describe("WorkoutList presentation", () => {
     const row = within(screen.getByRole("article", { name: "Easy Run on 2026-09-18" }));
     expect(row.getByRole("button", { name: "Edit Title" }).closest("article")).toHaveClass("session-row");
     expect(row.getByRole("button", { name: "Delete Easy Run" }).parentElement).toHaveClass("session-actions");
+    expect(screen.queryByText("Action")).not.toBeInTheDocument();
     expect(row.queryByRole("combobox", { name: "Edit Type" })).not.toBeInTheDocument();
     expect(row.queryByRole("combobox", { name: "Edit Status" })).not.toBeInTheDocument();
     expect(row.queryByText("Hidden details")).not.toBeInTheDocument();
@@ -101,6 +102,36 @@ describe("WorkoutList presentation", () => {
     for (const hiddenValue of [/^run$/i, /^completed$/i, /^planned$/i, /^actual$/i]) {
       expect(row.queryByText(hiddenValue)).not.toBeInTheDocument();
     }
+  });
+
+  it("keeps week navigation and actual mileage in the workouts section", () => {
+    const onPreviousWeek = vi.fn();
+    const onNextWeek = vi.fn();
+    const onCurrentWeek = vi.fn();
+    render(
+      <WorkoutList
+        weekStart="2026-09-14"
+        workouts={[workout]}
+        actualDistance={5.25}
+        isCurrentWeek={false}
+        onPreviousWeek={onPreviousWeek}
+        onNextWeek={onNextWeek}
+        onCurrentWeek={onCurrentWeek}
+        onCreate={noCreate}
+        onUpdate={noUpdate}
+        onDelete={noDelete}
+      />,
+    );
+
+    const section = within(screen.getByRole("region", { name: "Workouts" }));
+    expect(section.getByText("Sep 14–20, 2026")).toBeInTheDocument();
+    expect(section.getByText("Weekly mileage").parentElement).toHaveTextContent("5.25 mi");
+    fireEvent.click(section.getByRole("button", { name: "Previous week" }));
+    fireEvent.click(section.getByRole("button", { name: "Next week" }));
+    fireEvent.click(section.getByRole("button", { name: "Current week" }));
+    expect(onPreviousWeek).toHaveBeenCalledOnce();
+    expect(onNextWeek).toHaveBeenCalledOnce();
+    expect(onCurrentWeek).toHaveBeenCalledOnce();
   });
 
   it("renders an empty selected day without fake workout content", () => {
