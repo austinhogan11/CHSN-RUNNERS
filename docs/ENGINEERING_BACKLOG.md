@@ -961,7 +961,7 @@ type selections save immediately, pace stays derived, and deletion remains confi
 behind a compact action menu. A follow-up Product 3 polish pass keeps the type selector
 actionable on the first click, stabilizes inline editor dimensions, and presents
 session creation as a compact insertion row. The approved table refinement separates
-title, type, and metric columns, restores the acid-lime Runner palette, and replaces
+title, type, and metric columns and replaces
 the overflow menu with a direct confirmed delete control. Completion is inferred from
 non-null actual distance or duration; clearing both returns a session to planned.
 Persisted status remains in the API and storage model for compatibility, is normalized
@@ -971,9 +971,8 @@ totals immediately and refresh week and trend data. Multiple same-day sessions a
 presentation-only Rest days remain supported. A V2-inspired Product 3 refinement
 adds a single table header and stable date, type, title, description, start, duration,
 pace, planned, actual, and delete columns while retaining the simpler V1 domain.
-A compact follow-up tightens real and presentation-only Rest rows, aligns destructive
-actions, and restores the Volt-on-black theme with Crimson reserved for errors and
-deletion. New sessions default start time from the browser's local clock. Supplying
+A compact follow-up tightens real and presentation-only Rest rows and aligns destructive
+actions. New sessions default start time from the browser's local clock. Supplying
 duration during creation copies the entered planned distance to actual distance for
 immediate completion and derived pace; omitting duration leaves execution values null.
 The hybrid weekly workout overview and selected-day detail redesign makes the
@@ -989,11 +988,15 @@ views. Runner now supports authenticated, unbounded previous and next week
 navigation using local Monday-through-Sunday calendar dates. The selected weekday
 tracks across weeks, past and future empty weeks remain schedulable, and successful
 mutations refresh the displayed week without returning to the current week. The
-weekly summary identifies the current week separately from historical and future
-weeks. Its navigation controls and current-week return action now live inside the
-summary card. The mileage trend has independent one-week window navigation in its
-own header, shows the requested 12-week date range, and prevents navigation beyond
-the latest window ending with the current local week.
+workout section now owns the displayed-week navigation, date range, current-week
+return action, workout count, and a single actual weekly-mileage value. The redundant
+standalone weekly summary card has been removed. The mileage trend has independent
+one-week window navigation in its own header, shows the requested 12-week date range,
+prevents navigation beyond the latest window ending with the current local week, and
+renders only actual mileage even though the API contract still includes planned
+mileage. Runner now uses a centralized neon Carolina-blue accent palette on dark
+graphite surfaces, with crimson reserved for errors and deletion. Weekly goal editing
+has not been implemented and remains separate future product work.
 
 Support the primary workflow:
 
