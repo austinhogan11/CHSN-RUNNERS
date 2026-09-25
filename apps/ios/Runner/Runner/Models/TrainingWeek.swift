@@ -6,7 +6,7 @@ struct WeekSummary: Hashable, Sendable {
 
     var actualMileage: Double {
         workouts.reduce(0) { total, workout in
-            total + (workout.distanceMiles ?? 0)
+            total + (workout.hasActualExecution ? workout.distanceMiles ?? 0 : 0)
         }
     }
 
@@ -16,7 +16,7 @@ struct WeekSummary: Hashable, Sendable {
 
     func actualMileage(on date: Date, calendar: Calendar = .runner) -> Double {
         workouts(on: date, calendar: calendar).reduce(0) { total, workout in
-            total + (workout.distanceMiles ?? 0)
+            total + (workout.hasActualExecution ? workout.distanceMiles ?? 0 : 0)
         }
     }
 }

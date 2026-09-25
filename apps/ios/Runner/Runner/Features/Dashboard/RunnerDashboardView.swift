@@ -3,14 +3,15 @@ import SwiftUI
 
 struct RunnerDashboardView: View {
     @State private var state = DashboardState.mock()
-    @State private var showingAddWorkoutNotice = false
+    @State private var editorContext: WorkoutEditorContext?
+    @State private var workoutPendingDeletion: Workout?
 
     var body: some View {
         ZStack {
             RunnerTheme.background
                 .ignoresSafeArea()
 
-            ScrollView {
+            ScrollView(.vertical) {
                 LazyVStack(spacing: 20) {
                     RunnerHeaderView()
                     MileageTrendView(points: state.trend)
@@ -18,20 +19,51 @@ struct RunnerDashboardView: View {
                     SelectedDayView(
                         date: state.selectedDate,
                         workouts: state.selectedDayWorkouts,
-                        addWorkout: { showingAddWorkoutNotice = true }
+                        addWorkout: {
+                            editorContext = WorkoutEditorContext(date: state.selectedDate)
+                        },
+                        editWorkout: { workout in
+                            editorContext = WorkoutEditorContext(date: workout.date, workout: workout)
+                        },
+                        deleteWorkout: { workoutPendingDeletion = $0 }
                     )
-                    WeeklyMileageSummaryView(summary: state.week)
+                    WeeklyMileageSummaryView(summary: state.displayedWeek)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 36)
+                .safeAreaPadding(.top, 8)
+                .safeAreaPadding(.bottom, 28)
             }
             .scrollIndicators(.hidden)
         }
         .preferredColorScheme(.dark)
-        .alert("Add workout", isPresented: $showingAddWorkoutNotice) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Workout creation will be connected in a later milestone.")
+        .sheet(item: $editorContext) { context in
+            WorkoutEditorView(context: context) { input in
+                if let workout = context.workout {
+                    state.updateWorkout(id: workout.id, with: input)
+                } else {
+                    state.createWorkout(input)
+                }
+            }
+        }
+        .alert(
+            "Delete workout?",
+            isPresented: Binding(
+                get: { workoutPendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented { workoutPendingDeletion = nil }
+                }
+            ),
+            presenting: workoutPendingDeletion
+        ) { workout in
+            Button("Delete", role: .destructive) {
+                state.deleteWorkout(id: workout.id)
+                workoutPendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) {
+                workoutPendingDeletion = nil
+            }
+        } message: { workout in
+            Text("Delete “\(workout.title)”? This only affects local data.")
         }
     }
 }
@@ -45,18 +77,11 @@ private struct RunnerHeaderView: View {
                 .frame(width: 40, height: 40)
                 .background(RunnerTheme.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Runner")
-                    .font(.title2.bold())
-                Text("YOUR TRAINING, THIS WEEK")
-                    .font(.caption2.weight(.semibold))
-                    .tracking(1.2)
-                    .foregroundStyle(RunnerTheme.mutedText)
-            }
+            Text("Runner")
+                .font(.title2.bold())
 
             Spacer()
         }
-        .padding(.top, 12)
         .accessibilityElement(children: .combine)
     }
 }
@@ -67,13 +92,8 @@ private struct MileageTrendView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Weekly mileage")
-                        .font(.headline)
-                    Text("Actual miles only")
-                        .font(.caption)
-                        .foregroundStyle(RunnerTheme.mutedText)
-                }
+                Text("Weekly mileage")
+                    .font(.headline)
 
                 Spacer()
 
@@ -132,7 +152,7 @@ private struct MileageTrendView: View {
                     }
                 }
             }
-            .frame(height: 190)
+            .frame(minHeight: 170, idealHeight: 190)
             .accessibilityLabel("Actual weekly mileage trend")
         }
         .runnerCard()
@@ -144,23 +164,50 @@ private struct WeekOverviewView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(state.week.weekStart, format: .dateTime.month(.wide).day())
-                    .font(.headline)
-                Text("–")
-                    .foregroundStyle(RunnerTheme.mutedText)
-                if let weekEnd = state.weekDates.last {
-                    Text(weekEnd, format: .dateTime.month(.abbreviated).day())
-                        .font(.headline)
+            HStack(spacing: 12) {
+                Button("Previous week", systemImage: "chevron.left") {
+                    state.showPreviousWeek()
                 }
-                Spacer()
-            }
+                .labelStyle(.iconOnly)
 
-            HStack(spacing: 6) {
+                Spacer()
+
+                VStack(spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(state.displayedWeekStart, format: .dateTime.month(.wide).day())
+                        Text("–")
+                            .foregroundStyle(RunnerTheme.mutedText)
+                        if let weekEnd = state.weekDates.last {
+                            Text(weekEnd, format: .dateTime.month(.abbreviated).day())
+                        }
+                    }
+                    .font(.headline)
+
+                    if !state.isViewingCurrentWeek {
+                        Button("Current week") {
+                            state.showCurrentWeek()
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(RunnerTheme.accent)
+                    }
+                }
+
+                Spacer()
+
+                Button("Next week", systemImage: "chevron.right") {
+                    state.showNextWeek()
+                }
+                .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(RunnerTheme.accent)
+            .frame(minHeight: 44)
+
+            HStack(spacing: 5) {
                 ForEach(state.weekDates, id: \.self) { date in
                     WeekdayButton(
                         date: date,
-                        mileage: state.week.actualMileage(on: date),
+                        mileage: state.displayedWeek.actualMileage(on: date),
                         isSelected: Calendar.runner.isDate(date, inSameDayAs: state.selectedDate),
                         select: { state.selectedDate = date }
                     )
@@ -185,6 +232,7 @@ private struct WeekdayButton: View {
                 Text(date, format: .dateTime.day())
                     .font(.callout.weight(.bold))
                     .foregroundStyle(isSelected ? RunnerTheme.background : .white)
+                    .minimumScaleFactor(0.8)
                 Circle()
                     .fill(mileage > 0 ? (isSelected ? RunnerTheme.background : RunnerTheme.accent) : .clear)
                     .frame(width: 4, height: 4)
@@ -213,6 +261,8 @@ private struct SelectedDayView: View {
     let date: Date
     let workouts: [Workout]
     let addWorkout: () -> Void
+    let editWorkout: (Workout) -> Void
+    let deleteWorkout: (Workout) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -248,9 +298,13 @@ private struct SelectedDayView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
             } else {
-                VStack(spacing: 10) {
+                LazyVStack(spacing: 10) {
                     ForEach(workouts) { workout in
-                        WorkoutRow(workout: workout)
+                        WorkoutRow(
+                            workout: workout,
+                            edit: { editWorkout(workout) },
+                            delete: { deleteWorkout(workout) }
+                        )
                     }
                 }
             }
@@ -275,6 +329,8 @@ private struct SelectedDayView: View {
 
 private struct WorkoutRow: View {
     let workout: Workout
+    let edit: () -> Void
+    let delete: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -290,16 +346,27 @@ private struct WorkoutRow: View {
 
                 Spacer()
 
-                if let startTime = workout.startTime {
-                    Text(startTime, format: .dateTime.hour().minute())
-                        .font(.caption)
-                        .foregroundStyle(RunnerTheme.mutedText)
+                Menu {
+                    Button("Edit", systemImage: "pencil", action: edit)
+                    Button("Delete", systemImage: "trash", role: .destructive, action: delete)
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
                 }
+                .foregroundStyle(RunnerTheme.mutedText)
+                .accessibilityLabel("Workout actions")
             }
 
-            HStack(spacing: 20) {
+            if let startTime = workout.startTime {
+                Label(startTime.formatted(.dateTime.hour().minute()), systemImage: "clock")
+                    .font(.caption)
+                    .foregroundStyle(RunnerTheme.mutedText)
+            }
+
+            HStack(spacing: 12) {
                 WorkoutMetric(label: "DISTANCE", value: distanceText)
-                WorkoutMetric(label: "DURATION", value: durationText)
+                WorkoutMetric(label: "DURATION", value: WorkoutDuration.format(workout.durationSeconds).nilIfEmpty ?? "—")
                 WorkoutMetric(label: "PACE", value: paceText)
             }
         }
@@ -310,16 +377,6 @@ private struct WorkoutRow: View {
     private var distanceText: String {
         guard let distance = workout.distanceMiles else { return "—" }
         return "\(distance.formatted(.number.precision(.fractionLength(1)))) mi"
-    }
-
-    private var durationText: String {
-        guard let duration = workout.durationSeconds else { return "—" }
-        let hours = duration / 3_600
-        let minutes = (duration % 3_600) / 60
-        let seconds = duration % 60
-        return hours > 0
-            ? String(format: "%d:%02d:%02d", hours, minutes, seconds)
-            : String(format: "%d:%02d", minutes, seconds)
     }
 
     private var paceText: String {
@@ -340,6 +397,7 @@ private struct WorkoutMetric: View {
             Text(value)
                 .font(.caption.weight(.semibold))
                 .monospacedDigit()
+                .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -349,16 +407,17 @@ private struct WeeklyMileageSummaryView: View {
     let summary: WeekSummary
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Weekly actual")
                     .font(.subheadline.weight(.semibold))
                 Text("Completed distance across all sessions")
                     .font(.caption)
                     .foregroundStyle(RunnerTheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 0) {
                 Text(summary.actualMileage, format: .number.precision(.fractionLength(1)))
@@ -372,6 +431,149 @@ private struct WeeklyMileageSummaryView: View {
             }
         }
         .runnerCard()
+    }
+}
+
+private struct WorkoutEditorContext: Identifiable {
+    let id = UUID()
+    let date: Date
+    let workout: Workout?
+
+    init(date: Date, workout: Workout? = nil) {
+        self.date = date
+        self.workout = workout
+    }
+}
+
+private struct WorkoutEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    let context: WorkoutEditorContext
+    let save: (WorkoutInput) -> Void
+
+    @State private var title: String
+    @State private var distance: String
+    @State private var duration: String
+    @State private var startTime: Date
+    @State private var includesStartTime: Bool
+    @State private var validationMessage: String?
+
+    init(context: WorkoutEditorContext, save: @escaping (WorkoutInput) -> Void) {
+        self.context = context
+        self.save = save
+        let workout = context.workout
+        _title = State(initialValue: workout?.title ?? "")
+        _distance = State(initialValue: workout?.distanceMiles.map { $0.formatted() } ?? "")
+        _duration = State(initialValue: WorkoutDuration.format(workout?.durationSeconds))
+        _startTime = State(initialValue: workout?.startTime ?? context.date)
+        _includesStartTime = State(initialValue: workout == nil || workout?.startTime != nil)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Workout") {
+                    LabeledContent("Date") {
+                        Text(context.date, format: .dateTime.weekday(.abbreviated).month().day())
+                    }
+                    TextField("Title", text: $title)
+                        .textInputAutocapitalization(.sentences)
+                }
+
+                Section("Actual execution") {
+                    TextField("Distance in miles", text: $distance)
+                        .keyboardType(.decimalPad)
+                    TextField("Duration (MM:SS or HH:MM:SS)", text: $duration)
+                        .keyboardType(.numbersAndPunctuation)
+                    Toggle("Start time", isOn: $includesStartTime)
+                    if includesStartTime {
+                        DatePicker("Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                    }
+                }
+
+                Section {
+                    LabeledContent("Pace") {
+                        Text(derivedPace)
+                            .monospacedDigit()
+                    }
+                } footer: {
+                    Text("Pace is calculated from duration and positive distance.")
+                }
+
+                if let validationMessage {
+                    Section {
+                        Text(validationMessage)
+                            .foregroundStyle(RunnerTheme.crimson)
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(RunnerTheme.background)
+            .navigationTitle(context.workout == nil ? "Add workout" : "Edit workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { saveWorkout() }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .presentationDetents([.medium, .large])
+    }
+
+    private var derivedPace: String {
+        guard let parsedDistance = Double(distance), parsedDistance > 0,
+              let parsedDuration = WorkoutDuration.parse(duration)
+        else {
+            return "—"
+        }
+        let pace = Int((Double(parsedDuration) / parsedDistance).rounded())
+        return String(format: "%d:%02d /mi", pace / 60, pace % 60)
+    }
+
+    private func saveWorkout() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else {
+            validationMessage = "Enter a workout title."
+            return
+        }
+
+        let parsedDistance: Double?
+        if distance.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parsedDistance = nil
+        } else if let value = Double(distance), value > 0 {
+            parsedDistance = value
+        } else {
+            validationMessage = "Distance must be a positive number."
+            return
+        }
+
+        let trimmedDuration = duration.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parsedDuration = WorkoutDuration.parse(trimmedDuration)
+        if !trimmedDuration.isEmpty && parsedDuration == nil {
+            validationMessage = "Use MM:SS or HH:MM:SS for duration."
+            return
+        }
+
+        save(
+            WorkoutInput(
+                date: context.date,
+                title: trimmedTitle,
+                distanceMiles: parsedDistance,
+                durationSeconds: parsedDuration,
+                startTime: includesStartTime ? startTime : nil
+            )
+        )
+        dismiss()
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }
 

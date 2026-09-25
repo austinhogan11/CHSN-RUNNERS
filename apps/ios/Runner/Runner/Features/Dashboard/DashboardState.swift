@@ -4,25 +4,153 @@ import Observation
 @MainActor
 @Observable
 final class DashboardState {
-    let week: WeekSummary
-    let trend: [MileageTrendPoint]
-    let weekDates: [Date]
+    let currentWeekStart: Date
+    private(set) var displayedWeekStart: Date
+    private(set) var workouts: [Workout]
+    private let baselineTrend: [MileageTrendPoint]
+    private let calendar: Calendar
+    private var locallyChangedWeeks: Set<Date>
     var selectedDate: Date
 
     init(
-        week: WeekSummary,
+        currentWeekStart: Date,
+        displayedWeekStart: Date? = nil,
+        workouts: [Workout],
         trend: [MileageTrendPoint],
         selectedDate: Date,
         calendar: Calendar = .runner
     ) {
-        self.week = week
-        self.trend = trend.sorted { $0.weekStart < $1.weekStart }
-        self.weekDates = RunnerCalendar.datesInWeek(starting: week.weekStart, calendar: calendar)
+        let normalizedCurrentWeek = RunnerCalendar.mondayStartingWeek(
+            containing: currentWeekStart,
+            calendar: calendar
+        )
+        let normalizedDisplayedWeek = RunnerCalendar.mondayStartingWeek(
+            containing: displayedWeekStart ?? currentWeekStart,
+            calendar: calendar
+        )
+
+        self.currentWeekStart = normalizedCurrentWeek
+        self.displayedWeekStart = normalizedDisplayedWeek
+        self.workouts = workouts
+        self.baselineTrend = trend.sorted { $0.weekStart < $1.weekStart }
         self.selectedDate = selectedDate
+        self.calendar = calendar
+        self.locallyChangedWeeks = [normalizedCurrentWeek]
+    }
+
+    var weekDates: [Date] {
+        RunnerCalendar.datesInWeek(starting: displayedWeekStart, calendar: calendar)
+    }
+
+    var displayedWeek: WeekSummary {
+        WeekSummary(
+            weekStart: displayedWeekStart,
+            workouts: workouts.filter { workout in
+                RunnerCalendar.mondayStartingWeek(containing: workout.date, calendar: calendar) == displayedWeekStart
+            }
+        )
     }
 
     var selectedDayWorkouts: [Workout] {
-        week.workouts(on: selectedDate)
+        displayedWeek.workouts(on: selectedDate, calendar: calendar)
+    }
+
+    var isViewingCurrentWeek: Bool {
+        displayedWeekStart == currentWeekStart
+    }
+
+    var trend: [MileageTrendPoint] {
+        var pointsByWeek = Dictionary(uniqueKeysWithValues: baselineTrend.map { ($0.weekStart, $0) })
+        for weekStart in locallyChangedWeeks {
+            pointsByWeek[weekStart] = MileageTrendPoint(
+                weekStart: weekStart,
+                actualMileage: actualMileage(forWeekStarting: weekStart)
+            )
+        }
+        return pointsByWeek.values.sorted { $0.weekStart < $1.weekStart }
+    }
+
+    func showPreviousWeek() {
+        moveWeek(by: -1)
+    }
+
+    func showNextWeek() {
+        moveWeek(by: 1)
+    }
+
+    func showCurrentWeek() {
+        move(to: currentWeekStart)
+    }
+
+    @discardableResult
+    func createWorkout(_ input: WorkoutInput) -> Workout {
+        let workout = Workout(
+            date: input.date,
+            kind: .run,
+            title: input.title,
+            startTime: input.startTime,
+            durationSeconds: input.durationSeconds,
+            distanceMiles: input.distanceMiles
+        )
+        workouts.append(workout)
+        markWeekChanged(containing: workout.date)
+        return workout
+    }
+
+    @discardableResult
+    func updateWorkout(id: Workout.ID, with input: WorkoutInput) -> Bool {
+        guard let index = workouts.firstIndex(where: { $0.id == id }) else { return false }
+        let originalDate = workouts[index].date
+        workouts[index] = workouts[index].updating(with: input)
+        markWeekChanged(containing: originalDate)
+        return true
+    }
+
+    @discardableResult
+    func deleteWorkout(id: Workout.ID) -> Bool {
+        guard let index = workouts.firstIndex(where: { $0.id == id }) else { return false }
+        let removed = workouts.remove(at: index)
+        markWeekChanged(containing: removed.date)
+        return true
+    }
+
+    private func moveWeek(by weekOffset: Int) {
+        guard let target = calendar.date(
+            byAdding: .weekOfYear,
+            value: weekOffset,
+            to: displayedWeekStart
+        ) else {
+            return
+        }
+        move(to: target)
+    }
+
+    private func move(to weekStart: Date) {
+        let selectedWeekdayOffset = calendar.dateComponents(
+            [.day],
+            from: displayedWeekStart,
+            to: calendar.startOfDay(for: selectedDate)
+        ).day ?? 0
+        displayedWeekStart = RunnerCalendar.mondayStartingWeek(containing: weekStart, calendar: calendar)
+        selectedDate = calendar.date(
+            byAdding: .day,
+            value: min(max(selectedWeekdayOffset, 0), 6),
+            to: displayedWeekStart
+        ) ?? displayedWeekStart
+    }
+
+    private func actualMileage(forWeekStarting weekStart: Date) -> Double {
+        workouts.reduce(0) { total, workout in
+            let workoutWeek = RunnerCalendar.mondayStartingWeek(containing: workout.date, calendar: calendar)
+            guard workoutWeek == weekStart, workout.hasActualExecution else { return total }
+            return total + (workout.distanceMiles ?? 0)
+        }
+    }
+
+    private func markWeekChanged(containing date: Date) {
+        locallyChangedWeeks.insert(
+            RunnerCalendar.mondayStartingWeek(containing: date, calendar: calendar)
+        )
     }
 
     static func mock(referenceDate: Date = .now, calendar: Calendar = .runner) -> DashboardState {
@@ -54,16 +182,16 @@ final class DashboardState {
             }
             return MileageTrendPoint(weekStart: start, actualMileage: mileage)
         }
-        let week = WeekSummary(weekStart: weekStart, workouts: workouts)
+        let currentWeek = WeekSummary(weekStart: weekStart, workouts: workouts)
         let trend = historicalTrend + [
-            MileageTrendPoint(weekStart: weekStart, actualMileage: week.actualMileage)
+            MileageTrendPoint(weekStart: weekStart, actualMileage: currentWeek.actualMileage)
         ]
-
         let selectedDate = RunnerCalendar.datesInWeek(starting: weekStart, calendar: calendar)
             .first(where: { calendar.isDate($0, inSameDayAs: referenceDate) }) ?? weekStart
 
         return DashboardState(
-            week: week,
+            currentWeekStart: weekStart,
+            workouts: workouts,
             trend: trend,
             selectedDate: selectedDate,
             calendar: calendar

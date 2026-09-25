@@ -91,6 +91,158 @@ struct RunnerTests {
         })
     }
 
+    @MainActor
+    @Test("Week navigation moves by seven days and preserves the selected weekday")
+    func previousAndNextWeekNavigation() throws {
+        let monday = try sampleDate(day: 21)
+        let thursday = try sampleDate(day: 24)
+        let priorMonday = try sampleDate(day: 14)
+        let priorThursday = try sampleDate(day: 17)
+        let state = makeState(weekStart: monday, selectedDate: thursday)
+
+        state.showPreviousWeek()
+
+        #expect(state.displayedWeekStart == priorMonday)
+        #expect(state.selectedDate == priorThursday)
+
+        state.showNextWeek()
+
+        #expect(state.displayedWeekStart == monday)
+        #expect(state.selectedDate == thursday)
+    }
+
+    @MainActor
+    @Test("Current-week return restores the current week and selected weekday")
+    func currentWeekReturn() throws {
+        let monday = try sampleDate(day: 21)
+        let friday = try sampleDate(day: 25)
+        let state = makeState(weekStart: monday, selectedDate: friday)
+
+        state.showPreviousWeek()
+        #expect(!state.isViewingCurrentWeek)
+
+        state.showCurrentWeek()
+
+        #expect(state.isViewingCurrentWeek)
+        #expect(state.displayedWeekStart == monday)
+        #expect(state.selectedDate == friday)
+    }
+
+    @MainActor
+    @Test("Creating a workout adds it to the selected day in memory")
+    func workoutCreation() throws {
+        let monday = try sampleDate(day: 21)
+        let startTime = try #require(testCalendar.date(bySettingHour: 6, minute: 45, second: 0, of: monday))
+        let state = makeState(weekStart: monday, selectedDate: monday)
+
+        let created = state.createWorkout(
+            WorkoutInput(
+                date: monday,
+                title: "  Easy run  ",
+                distanceMiles: 4.2,
+                durationSeconds: 2_100,
+                startTime: startTime
+            )
+        )
+
+        #expect(state.selectedDayWorkouts == [created])
+        #expect(created.title == "Easy run")
+        #expect(created.startTime == startTime)
+    }
+
+    @MainActor
+    @Test("Editing a workout preserves identity and date while updating editable values")
+    func workoutEditing() throws {
+        let monday = try sampleDate(day: 21)
+        let workout = Workout(
+            date: monday,
+            kind: .run,
+            title: "Before",
+            durationSeconds: 1_800,
+            distanceMiles: 3
+        )
+        let state = makeState(weekStart: monday, selectedDate: monday, workouts: [workout])
+        let newStartTime = try #require(testCalendar.date(bySettingHour: 7, minute: 15, second: 0, of: monday))
+
+        let updated = state.updateWorkout(
+            id: workout.id,
+            with: WorkoutInput(
+                date: try sampleDate(day: 22),
+                title: "After",
+                distanceMiles: 5,
+                durationSeconds: 2_400,
+                startTime: newStartTime
+            )
+        )
+
+        let result = try #require(state.workouts.first)
+        #expect(updated)
+        #expect(result.id == workout.id)
+        #expect(result.date == monday)
+        #expect(result.title == "After")
+        #expect(result.distanceMiles == 5)
+        #expect(result.durationSeconds == 2_400)
+        #expect(result.startTime == newStartTime)
+        #expect(result.paceSecondsPerMile == 480)
+    }
+
+    @MainActor
+    @Test("Deleting a workout removes it immediately")
+    func workoutDeletion() throws {
+        let monday = try sampleDate(day: 21)
+        let workout = Workout(date: monday, kind: .run, title: "Delete me", distanceMiles: 3)
+        let state = makeState(weekStart: monday, selectedDate: monday, workouts: [workout])
+
+        let deleted = state.deleteWorkout(id: workout.id)
+
+        #expect(deleted)
+        #expect(state.workouts.isEmpty)
+        #expect(state.selectedDayWorkouts.isEmpty)
+    }
+
+    @MainActor
+    @Test("Weekly mileage and trend recalculate after local mutations")
+    func weeklyMileageRecalculation() throws {
+        let monday = try sampleDate(day: 21)
+        let initial = Workout(
+            date: monday,
+            kind: .run,
+            title: "Initial",
+            durationSeconds: 1_800,
+            distanceMiles: 3
+        )
+        let state = makeState(weekStart: monday, selectedDate: monday, workouts: [initial])
+        #expect(state.displayedWeek.actualMileage == 3)
+
+        let added = state.createWorkout(
+            WorkoutInput(
+                date: try sampleDate(day: 22),
+                title: "Added",
+                distanceMiles: 5,
+                durationSeconds: 2_500,
+                startTime: nil
+            )
+        )
+        #expect(state.displayedWeek.actualMileage == 8)
+
+        _ = state.updateWorkout(
+            id: initial.id,
+            with: WorkoutInput(
+                date: monday,
+                title: "Initial edited",
+                distanceMiles: 4,
+                durationSeconds: 2_000,
+                startTime: nil
+            )
+        )
+        #expect(state.displayedWeek.actualMileage == 9)
+
+        _ = state.deleteWorkout(id: added.id)
+
+        #expect(state.displayedWeek.actualMileage == 4)
+        #expect(state.trend.first(where: { $0.weekStart == monday })?.actualMileage == 4)
+    }
+
     private var testCalendar: Calendar {
         var calendar = Calendar.runner
         if let timeZone = TimeZone(secondsFromGMT: 0) {
@@ -101,5 +253,20 @@ struct RunnerTests {
 
     private func sampleDate(day: Int) throws -> Date {
         try #require(testCalendar.date(from: DateComponents(year: 2026, month: 9, day: day)))
+    }
+
+    @MainActor
+    private func makeState(
+        weekStart: Date,
+        selectedDate: Date,
+        workouts: [Workout] = []
+    ) -> DashboardState {
+        DashboardState(
+            currentWeekStart: weekStart,
+            workouts: workouts,
+            trend: [MileageTrendPoint(weekStart: weekStart, actualMileage: 999)],
+            selectedDate: selectedDate,
+            calendar: testCalendar
+        )
     }
 }
