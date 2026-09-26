@@ -5,6 +5,26 @@ import Testing
 @Suite(.serialized)
 struct APIClientTests {
     @MainActor
+    @Test("Clerk access-token provider forwards the current session token")
+    func clerkAccessTokenProvider() async throws {
+        let source = StubClerkTokenSource(result: .success("clerk-session-token"))
+        let provider = ClerkAccessTokenProvider(tokenSource: source)
+
+        #expect(try await provider.accessToken() == "clerk-session-token")
+    }
+
+    @MainActor
+    @Test("Clerk access-token provider preserves token-source failures")
+    func clerkAccessTokenProviderFailure() async {
+        let source = StubClerkTokenSource(result: .failure(TokenSourceError.unavailable))
+        let provider = ClerkAccessTokenProvider(tokenSource: source)
+
+        await #expect(throws: TokenSourceError.unavailable) {
+            try await provider.accessToken()
+        }
+    }
+
+    @MainActor
     @Test("Week and trend DTOs decode real API field names and zero values")
     func decodesWeekAndTrendContracts() async throws {
         let weekJSON = """
@@ -201,6 +221,19 @@ struct APIClientTests {
             headerFields: ["Content-Type": "application/json"]
         )!
         return (response, Data(json.utf8))
+    }
+}
+
+private enum TokenSourceError: Error, Equatable {
+    case unavailable
+}
+
+@MainActor
+private struct StubClerkTokenSource: ClerkSessionTokenFetching {
+    let result: Result<String?, TokenSourceError>
+
+    func currentSessionToken() async throws -> String? {
+        try result.get()
     }
 }
 
