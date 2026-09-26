@@ -7,6 +7,10 @@ protocol ClerkSessionTokenFetching {
     func currentSessionToken() async throws -> String?
 }
 
+enum ClerkAccessTokenError: Error, Equatable {
+    case sessionUnavailable
+}
+
 @MainActor
 struct ClerkSessionTokenSource: ClerkSessionTokenFetching {
     func currentSessionToken() async throws -> String? {
@@ -23,7 +27,10 @@ struct ClerkAccessTokenProvider: AccessTokenProvider {
     }
 
     func accessToken() async throws -> String? {
-        try await tokenSource.currentSessionToken()
+        guard let token = try await tokenSource.currentSessionToken(), !token.isEmpty else {
+            throw ClerkAccessTokenError.sessionUnavailable
+        }
+        return token
     }
 }
 

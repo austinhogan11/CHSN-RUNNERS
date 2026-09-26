@@ -2,9 +2,19 @@ import Charts
 import SwiftUI
 
 struct RunnerDashboardView: View {
-    @State private var state = DashboardState.mock()
+    @State private var state: DashboardState
     @State private var editorContext: WorkoutEditorContext?
     @State private var workoutPendingDeletion: Workout?
+    let reauthenticate: (() async -> Void)?
+
+    @MainActor
+    init(
+        state: DashboardState? = nil,
+        reauthenticate: (() async -> Void)? = nil
+    ) {
+        _state = State(initialValue: state ?? DashboardState.mock())
+        self.reauthenticate = reauthenticate
+    }
 
     var body: some View {
         ZStack {
@@ -14,6 +24,20 @@ struct RunnerDashboardView: View {
             ScrollView(.vertical) {
                 LazyVStack(spacing: 20) {
                     RunnerHeaderView()
+                    if let errorMessage = state.errorMessage {
+                        DashboardErrorView(
+                            message: errorMessage,
+                            requiresAuthentication: state.requiresAuthentication,
+                            retry: {
+                                if state.requiresAuthentication, let reauthenticate {
+                                    await reauthenticate()
+                                } else {
+                                    await state.retryLoading()
+                                }
+                            },
+                            dismiss: state.clearError
+                        )
+                    }
                     MileageTrendView(state: state)
                     WeekOverviewView(state: state)
                     SelectedDayView(
@@ -34,16 +58,20 @@ struct RunnerDashboardView: View {
                 .safeAreaPadding(.bottom, 28)
             }
             .scrollIndicators(.hidden)
+
+            if state.initialLoadState == .loading && state.workouts.isEmpty {
+                ProgressView("Loading your training…")
+                    .padding(18)
+                    .background(RunnerTheme.elevatedSurface, in: RoundedRectangle(cornerRadius: 14))
+            }
         }
         .preferredColorScheme(.dark)
         .sheet(item: $editorContext) { context in
             WorkoutEditorView(context: context) { input in
-                Task {
-                    if let workout = context.workout {
-                        _ = try? await state.updateWorkout(id: workout.id, with: input)
-                    } else {
-                        _ = try? await state.createWorkout(input)
-                    }
+                if let workout = context.workout {
+                    _ = try await state.updateWorkout(id: workout.id, with: input)
+                } else {
+                    _ = try await state.createWorkout(input)
                 }
             }
         }
@@ -61,12 +89,43 @@ struct RunnerDashboardView: View {
                 Task { _ = try? await state.deleteWorkout(id: workout.id) }
                 workoutPendingDeletion = nil
             }
+            .disabled(state.isMutating)
             Button("Cancel", role: .cancel) {
                 workoutPendingDeletion = nil
             }
         } message: { workout in
-            Text("Delete “\(workout.title)”? This only affects local data.")
+            Text("Delete “\(workout.title)”? This removes it from Runner.")
         }
+        .task {
+            if state.initialLoadState == .idle {
+                await state.loadInitialData()
+            }
+        }
+    }
+}
+
+private struct DashboardErrorView: View {
+    let message: String
+    let requiresAuthentication: Bool
+    let retry: () async -> Void
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(Color.white.opacity(0.9))
+            Spacer(minLength: 4)
+            Button(requiresAuthentication ? "Sign in" : "Retry") {
+                Task { await retry() }
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(RunnerTheme.accent)
+            Button("Dismiss", systemImage: "xmark", action: dismiss)
+                .labelStyle(.iconOnly)
+                .foregroundStyle(RunnerTheme.mutedText)
+        }
+        .runnerCard()
     }
 }
 
@@ -369,9 +428,10 @@ private struct WeekOverviewView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 Button("Previous week", systemImage: "chevron.left") {
-                    state.showPreviousWeek()
+                    Task { await state.loadPreviousWeek() }
                 }
                 .labelStyle(.iconOnly)
+                .disabled(state.isWeekLoading)
 
                 Spacer()
 
@@ -388,7 +448,7 @@ private struct WeekOverviewView: View {
 
                     if !state.isViewingCurrentWeek {
                         Button("Current week") {
-                            state.showCurrentWeek()
+                            Task { await state.loadCurrentWeek() }
                         }
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(RunnerTheme.accent)
@@ -398,9 +458,10 @@ private struct WeekOverviewView: View {
                 Spacer()
 
                 Button("Next week", systemImage: "chevron.right") {
-                    state.showNextWeek()
+                    Task { await state.loadNextWeek() }
                 }
                 .labelStyle(.iconOnly)
+                .disabled(state.isWeekLoading)
             }
             .buttonStyle(.plain)
             .foregroundStyle(RunnerTheme.accent)
@@ -673,7 +734,7 @@ private struct WorkoutEditorContext: Identifiable {
 private struct WorkoutEditorView: View {
     @Environment(\.dismiss) private var dismiss
     let context: WorkoutEditorContext
-    let save: (WorkoutInput) -> Void
+    let save: (WorkoutInput) async throws -> Void
 
     @State private var title: String
     @State private var distance: String
@@ -681,6 +742,8 @@ private struct WorkoutEditorView: View {
     @State private var durationSeconds: String
     @State private var startTime: Date
     @State private var includesStartTime: Bool
+    @State private var isSaving = false
+    @State private var saveError: String?
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -690,7 +753,7 @@ private struct WorkoutEditorView: View {
         case durationSeconds
     }
 
-    init(context: WorkoutEditorContext, save: @escaping (WorkoutInput) -> Void) {
+    init(context: WorkoutEditorContext, save: @escaping (WorkoutInput) async throws -> Void) {
         self.context = context
         self.save = save
         let workout = context.workout
@@ -774,6 +837,14 @@ private struct WorkoutEditorView: View {
                             .monospacedDigit()
                     }
                 }
+
+                if let saveError {
+                    Section {
+                        Text(saveError)
+                            .font(.caption)
+                            .foregroundStyle(Color.white.opacity(0.85))
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
             .background(RunnerTheme.background)
@@ -784,9 +855,9 @@ private struct WorkoutEditorView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { saveWorkout() }
+                    Button("Save") { Task { await saveWorkout() } }
                         .fontWeight(.semibold)
-                        .disabled(!isFormValid)
+                        .disabled(!isFormValid || isSaving)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -821,20 +892,27 @@ private struct WorkoutEditorView: View {
             )
     }
 
-    private func saveWorkout() {
+    private func saveWorkout() async {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isFormValid else { return }
 
-        save(
-            WorkoutInput(
+        isSaving = true
+        saveError = nil
+        defer { isSaving = false }
+        do {
+            try await save(
+                WorkoutInput(
                 date: context.date,
                 title: trimmedTitle,
                 distanceMiles: WorkoutDistance.parse(distance),
                 durationSeconds: parsedDuration,
                 startTime: includesStartTime ? startTime : nil
+                )
             )
-        )
-        dismiss()
+            dismiss()
+        } catch {
+            saveError = "Runner could not save this workout. Please retry."
+        }
     }
 }
 

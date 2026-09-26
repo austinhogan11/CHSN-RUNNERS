@@ -10,6 +10,17 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var authentication: AuthenticationState
+    @State private var dashboardState: DashboardState
+
+    init(authentication: AuthenticationState, dashboardState: DashboardState? = nil) {
+        self.authentication = authentication
+        let repository = APIWorkoutRepository(
+            client: APIClient(tokenProvider: ClerkAccessTokenProvider())
+        )
+        _dashboardState = State(
+            initialValue: dashboardState ?? DashboardState.production(repository: repository)
+        )
+    }
 
     var body: some View {
         Group {
@@ -18,14 +29,14 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(RunnerTheme.background)
             } else if authentication.isSignedIn {
-                RunnerDashboardView()
+                RunnerDashboardView(
+                    state: dashboardState,
+                    reauthenticate: {
+                        await authentication.signOut()
+                    }
+                )
                     .safeAreaInset(edge: .top, spacing: 0) {
                         SignedInBar(authentication: authentication)
-                    }
-                    .task {
-                        if authentication.weekReadState == .idle {
-                            await authentication.proveAuthenticatedWeekRead()
-                        }
                     }
             } else {
                 SignedOutView(authentication: authentication)
@@ -101,14 +112,10 @@ private struct SignedInBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            apiStatus
+            Text("Signed in")
+                .foregroundStyle(RunnerTheme.mutedText)
 
             Spacer()
-
-            Button("Check API") {
-                Task { await authentication.proveAuthenticatedWeekRead() }
-            }
-            .disabled(authentication.weekReadState == .loading)
 
             Button("Sign out") {
                 Task { await authentication.signOut() }
@@ -127,24 +134,4 @@ private struct SignedInBar: View {
         }
     }
 
-    @ViewBuilder
-    private var apiStatus: some View {
-        switch authentication.weekReadState {
-        case .idle:
-            Text("Signed in")
-                .foregroundStyle(RunnerTheme.mutedText)
-        case .loading:
-            ProgressView()
-                .controlSize(.small)
-                .accessibilityLabel("Checking API")
-        case let .success(weekStart, workoutCount):
-            Text("API ✓ · \(weekStart.formatted(.dateTime.month(.abbreviated).day())) · \(workoutCount)")
-                .foregroundStyle(Color.white.opacity(0.8))
-                .lineLimit(1)
-        case let .failure(message):
-            Text(message)
-                .foregroundStyle(Color.white.opacity(0.8))
-                .lineLimit(1)
-        }
-    }
 }

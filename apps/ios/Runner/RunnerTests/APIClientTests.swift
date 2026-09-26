@@ -25,6 +25,17 @@ struct APIClientTests {
     }
 
     @MainActor
+    @Test("Clerk access-token provider rejects a missing session token")
+    func clerkAccessTokenProviderMissingSession() async {
+        let source = StubClerkTokenSource(result: .success(nil))
+        let provider = ClerkAccessTokenProvider(tokenSource: source)
+
+        await #expect(throws: ClerkAccessTokenError.sessionUnavailable) {
+            try await provider.accessToken()
+        }
+    }
+
+    @MainActor
     @Test("Week and trend DTOs decode real API field names and zero values")
     func decodesWeekAndTrendContracts() async throws {
         let weekJSON = """

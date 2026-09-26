@@ -1,10 +1,22 @@
 import Foundation
 import Observation
 
+enum DashboardOperationError: Error, Equatable {
+    case operationInProgress
+}
+
 @MainActor
 @Observable
 final class DashboardState {
     static let trendWindowSize = 12
+    static let productionTrendWeekCount = 52
+
+    enum LoadState: Equatable {
+        case idle
+        case loading
+        case loaded
+        case failed
+    }
 
     let currentWeekStart: Date
     private(set) var displayedWeekStart: Date
@@ -16,6 +28,12 @@ final class DashboardState {
     private var trendWindowEndIndex: Int?
     var selectedDate: Date
     private(set) var selectedTrendWeekStart: Date?
+    private(set) var initialLoadState: LoadState = .idle
+    private(set) var isWeekLoading = false
+    private(set) var isTrendLoading = false
+    private(set) var isMutating = false
+    private(set) var errorMessage: String?
+    private(set) var requiresAuthentication = false
 
     init(
         currentWeekStart: Date,
@@ -61,6 +79,22 @@ final class DashboardState {
             workouts: workouts.filter { workout in
                 RunnerCalendar.mondayStartingWeek(containing: workout.date, calendar: calendar) == displayedWeekStart
             }
+        )
+    }
+
+    static func production(
+        repository: any WorkoutRepository,
+        referenceDate: Date = .now,
+        calendar: Calendar = .runner
+    ) -> DashboardState {
+        let weekStart = RunnerCalendar.mondayStartingWeek(containing: referenceDate, calendar: calendar)
+        return DashboardState(
+            currentWeekStart: weekStart,
+            workouts: [],
+            trend: [],
+            selectedDate: referenceDate,
+            calendar: calendar,
+            repository: repository
         )
     }
 
@@ -177,48 +211,191 @@ final class DashboardState {
         move(to: currentWeekStart)
     }
 
+    func loadInitialData() async {
+        guard initialLoadState != .loading else { return }
+        initialLoadState = .loading
+        errorMessage = nil
+        requiresAuthentication = false
+
+        do {
+            let week = try await repository.loadWeek(containing: displayedWeekStart)
+            apply(week)
+            let points = try await repository.loadMileageTrend(
+                ending: currentWeekStart,
+                weeks: Self.productionTrendWeekCount
+            )
+            applyTrend(points)
+            initialLoadState = .loaded
+        } catch {
+            initialLoadState = .failed
+            record(error)
+        }
+    }
+
+    func retryLoading() async {
+        await loadInitialData()
+    }
+
+    func loadPreviousWeek() async {
+        await loadWeek(offset: -1)
+    }
+
+    func loadNextWeek() async {
+        await loadWeek(offset: 1)
+    }
+
+    func loadCurrentWeek() async {
+        await loadWeek(starting: currentWeekStart)
+    }
+
+    private func loadWeek(offset: Int) async {
+        guard let target = calendar.date(byAdding: .weekOfYear, value: offset, to: displayedWeekStart) else {
+            return
+        }
+        await loadWeek(starting: target)
+    }
+
+    private func loadWeek(starting target: Date) async {
+        guard !isWeekLoading else { return }
+        isWeekLoading = true
+        errorMessage = nil
+        defer { isWeekLoading = false }
+
+        do {
+            let summary = try await repository.loadWeek(containing: target)
+            let selectedWeekdayOffset = calendar.dateComponents(
+                [.day],
+                from: displayedWeekStart,
+                to: calendar.startOfDay(for: selectedDate)
+            ).day ?? 0
+            apply(summary)
+            selectedDate = calendar.date(
+                byAdding: .day,
+                value: min(max(selectedWeekdayOffset, 0), 6),
+                to: displayedWeekStart
+            ) ?? displayedWeekStart
+        } catch {
+            record(error)
+        }
+    }
+
     func refreshDisplayedWeek() async throws {
         let summary = try await repository.loadWeek(containing: displayedWeekStart)
-        workouts.removeAll {
-            RunnerCalendar.mondayStartingWeek(containing: $0.date, calendar: calendar) == displayedWeekStart
-        }
-        workouts.append(contentsOf: summary.workouts)
-        locallyChangedWeeks.remove(displayedWeekStart)
+        apply(summary)
     }
 
     func refreshTrend(ending endDate: Date, weeks: Int) async throws {
-        baselineTrend = try await repository.loadMileageTrend(ending: endDate, weeks: weeks)
-            .sorted { $0.weekStart < $1.weekStart }
+        applyTrend(try await repository.loadMileageTrend(ending: endDate, weeks: weeks))
+    }
+
+    @discardableResult
+    func createWorkout(_ input: WorkoutInput) async throws -> Workout {
+        try beginMutation()
+        defer { isMutating = false }
+        do {
+            let workout = try await repository.createWorkout(input)
+            await refreshAfterConfirmedMutation(affecting: input.date)
+            return workout
+        } catch {
+            record(error)
+            throw error
+        }
+    }
+
+    @discardableResult
+    func updateWorkout(id: Workout.ID, with input: WorkoutInput) async throws -> Bool {
+        guard workouts.contains(where: { $0.id == id }) else { return false }
+        try beginMutation()
+        defer { isMutating = false }
+        do {
+            _ = try await repository.updateWorkout(id: id, with: input)
+            await refreshAfterConfirmedMutation(affecting: input.date)
+            return true
+        } catch {
+            record(error)
+            throw error
+        }
+    }
+
+    @discardableResult
+    func deleteWorkout(id: Workout.ID) async throws -> Bool {
+        guard let workout = workouts.first(where: { $0.id == id }) else { return false }
+        try beginMutation()
+        defer { isMutating = false }
+        do {
+            try await repository.deleteWorkout(id: id)
+            await refreshAfterConfirmedMutation(affecting: workout.date)
+            return true
+        } catch {
+            record(error)
+            throw error
+        }
+    }
+
+    func clearError() {
+        errorMessage = nil
+    }
+
+    private func beginMutation() throws {
+        guard !isMutating else { throw DashboardOperationError.operationInProgress }
+        isMutating = true
+        errorMessage = nil
+    }
+
+    private func refreshAfterConfirmedMutation(affecting date: Date) async {
+        do {
+            let affectedWeek = RunnerCalendar.mondayStartingWeek(containing: date, calendar: calendar)
+            if affectedWeek == displayedWeekStart {
+                apply(try await repository.loadWeek(containing: affectedWeek))
+            }
+            applyTrend(try await repository.loadMileageTrend(
+                ending: currentWeekStart,
+                weeks: Self.productionTrendWeekCount
+            ))
+        } catch {
+            record(error)
+        }
+    }
+
+    private func apply(_ summary: WeekSummary) {
+        let normalizedWeek = RunnerCalendar.mondayStartingWeek(containing: summary.weekStart, calendar: calendar)
+        workouts.removeAll {
+            RunnerCalendar.mondayStartingWeek(containing: $0.date, calendar: calendar) == normalizedWeek
+        }
+        workouts.append(contentsOf: summary.workouts)
+        displayedWeekStart = normalizedWeek
+        locallyChangedWeeks.remove(normalizedWeek)
+    }
+
+    private func applyTrend(_ points: [MileageTrendPoint]) {
+        baselineTrend = points.sorted { $0.weekStart < $1.weekStart }
         locallyChangedWeeks.removeAll()
         trendWindowEndIndex = nil
         selectNewestVisibleTrendPoint()
     }
 
-    @discardableResult
-    func createWorkout(_ input: WorkoutInput) async throws -> Workout {
-        let workout = try await repository.createWorkout(input)
-        workouts.append(workout)
-        markWeekChanged(containing: workout.date)
-        return workout
-    }
-
-    @discardableResult
-    func updateWorkout(id: Workout.ID, with input: WorkoutInput) async throws -> Bool {
-        guard let index = workouts.firstIndex(where: { $0.id == id }) else { return false }
-        let originalDate = workouts[index].date
-        workouts[index] = try await repository.updateWorkout(id: id, with: input)
-        markWeekChanged(containing: originalDate)
-        return true
-    }
-
-    @discardableResult
-    func deleteWorkout(id: Workout.ID) async throws -> Bool {
-        guard let index = workouts.firstIndex(where: { $0.id == id }) else { return false }
-        let removed = workouts[index]
-        try await repository.deleteWorkout(id: id)
-        workouts.remove(at: index)
-        markWeekChanged(containing: removed.date)
-        return true
+    private func record(_ error: Error) {
+        requiresAuthentication = false
+        switch error {
+        case ClerkAccessTokenError.sessionUnavailable:
+            requiresAuthentication = true
+            errorMessage = "Your session is unavailable. Please sign in again."
+        case let APIClientError.httpStatus(code, _):
+            if code == 401 {
+                requiresAuthentication = true
+                errorMessage = "Your session expired. Please sign in again."
+            } else {
+                errorMessage = "Runner could not load your data (HTTP \(code))."
+            }
+        case APIClientError.transport:
+            errorMessage = "Runner could not reach the server. Check your connection and retry."
+        case APIClientError.decoding, APIClientError.invalidResponse:
+            errorMessage = "Runner received an unexpected response. Please retry."
+        case APIClientError.encoding:
+            errorMessage = "Runner could not prepare that request."
+        default:
+            errorMessage = "Runner could not complete that request. Please retry."
+        }
     }
 
     private func moveWeek(by weekOffset: Int) {
