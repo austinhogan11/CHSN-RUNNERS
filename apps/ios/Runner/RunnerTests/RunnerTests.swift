@@ -169,12 +169,12 @@ struct RunnerTests {
 
     @MainActor
     @Test("Creating a workout adds it to the selected day in memory")
-    func workoutCreation() throws {
+    func workoutCreation() async throws {
         let monday = try sampleDate(day: 21)
         let startTime = try #require(testCalendar.date(bySettingHour: 6, minute: 45, second: 0, of: monday))
         let state = makeState(weekStart: monday, selectedDate: monday)
 
-        let created = state.createWorkout(
+        let created = try await state.createWorkout(
             WorkoutInput(
                 date: monday,
                 title: "  Easy run  ",
@@ -204,7 +204,7 @@ struct RunnerTests {
 
     @MainActor
     @Test("Editing a workout preserves identity and date while updating editable values")
-    func workoutEditing() throws {
+    func workoutEditing() async throws {
         let monday = try sampleDate(day: 21)
         let workout = Workout(
             date: monday,
@@ -216,7 +216,7 @@ struct RunnerTests {
         let state = makeState(weekStart: monday, selectedDate: monday, workouts: [workout])
         let newStartTime = try #require(testCalendar.date(bySettingHour: 7, minute: 15, second: 0, of: monday))
 
-        let updated = state.updateWorkout(
+        let updated = try await state.updateWorkout(
             id: workout.id,
             with: WorkoutInput(
                 date: try sampleDate(day: 22),
@@ -252,12 +252,12 @@ struct RunnerTests {
 
     @MainActor
     @Test("Deleting a workout removes it immediately")
-    func workoutDeletion() throws {
+    func workoutDeletion() async throws {
         let monday = try sampleDate(day: 21)
         let workout = Workout(date: monday, kind: .run, title: "Delete me", distanceMiles: 3)
         let state = makeState(weekStart: monday, selectedDate: monday, workouts: [workout])
 
-        let deleted = state.deleteWorkout(id: workout.id)
+        let deleted = try await state.deleteWorkout(id: workout.id)
 
         #expect(deleted)
         #expect(state.workouts.isEmpty)
@@ -266,7 +266,7 @@ struct RunnerTests {
 
     @MainActor
     @Test("Weekly mileage and trend recalculate after local mutations")
-    func weeklyMileageRecalculation() throws {
+    func weeklyMileageRecalculation() async throws {
         let monday = try sampleDate(day: 21)
         let initial = Workout(
             date: monday,
@@ -278,7 +278,7 @@ struct RunnerTests {
         let state = makeState(weekStart: monday, selectedDate: monday, workouts: [initial])
         #expect(state.displayedWeek.actualMileage == 3)
 
-        let added = state.createWorkout(
+        let added = try await state.createWorkout(
             WorkoutInput(
                 date: try sampleDate(day: 22),
                 title: "Added",
@@ -291,7 +291,7 @@ struct RunnerTests {
         #expect(state.displayedWeek.totalDurationSeconds == 4_300)
         #expect(state.displayedWeek.workoutCount == 2)
 
-        _ = state.updateWorkout(
+        _ = try await state.updateWorkout(
             id: initial.id,
             with: WorkoutInput(
                 date: monday,
@@ -305,7 +305,7 @@ struct RunnerTests {
         #expect(state.displayedWeek.totalDurationSeconds == 4_500)
         #expect(state.displayedWeek.workoutCount == 2)
 
-        _ = state.deleteWorkout(id: added.id)
+        _ = try await state.deleteWorkout(id: added.id)
 
         #expect(state.displayedWeek.actualMileage == 4)
         #expect(state.displayedWeek.totalDurationSeconds == 2_000)

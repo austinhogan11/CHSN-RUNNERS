@@ -3,6 +3,7 @@ import Foundation
 struct Workout: Identifiable, Hashable, Sendable {
     enum Kind: String, Hashable, Sendable {
         case run
+        case rest
         case strength
         case crossTraining
         case other
@@ -10,6 +11,7 @@ struct Workout: Identifiable, Hashable, Sendable {
         var label: String {
             switch self {
             case .run: "Run"
+            case .rest: "Rest"
             case .strength: "Strength"
             case .crossTraining: "Cross training"
             case .other: "Other"
@@ -17,19 +19,23 @@ struct Workout: Identifiable, Hashable, Sendable {
         }
     }
 
-    let id: UUID
+    let id: String
     let date: Date
     let kind: Kind
     let title: String
+    let description: String?
+    let plannedDistanceMiles: Double?
     let startTime: Date?
     let durationSeconds: Int?
     let distanceMiles: Double?
 
     init(
-        id: UUID = UUID(),
+        id: String = UUID().uuidString.lowercased(),
         date: Date,
         kind: Kind,
         title: String,
+        description: String? = nil,
+        plannedDistanceMiles: Double? = nil,
         startTime: Date? = nil,
         durationSeconds: Int? = nil,
         distanceMiles: Double? = nil
@@ -38,6 +44,8 @@ struct Workout: Identifiable, Hashable, Sendable {
         self.date = date
         self.kind = kind
         self.title = title
+        self.description = description
+        self.plannedDistanceMiles = plannedDistanceMiles
         self.startTime = startTime
         self.durationSeconds = durationSeconds
         self.distanceMiles = distanceMiles
@@ -65,6 +73,8 @@ struct Workout: Identifiable, Hashable, Sendable {
             date: date,
             kind: kind,
             title: input.title,
+            description: description,
+            plannedDistanceMiles: plannedDistanceMiles,
             startTime: input.startTime,
             durationSeconds: input.durationSeconds,
             distanceMiles: input.distanceMiles

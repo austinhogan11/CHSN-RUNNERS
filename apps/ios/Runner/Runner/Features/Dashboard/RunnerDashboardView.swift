@@ -38,10 +38,12 @@ struct RunnerDashboardView: View {
         .preferredColorScheme(.dark)
         .sheet(item: $editorContext) { context in
             WorkoutEditorView(context: context) { input in
-                if let workout = context.workout {
-                    state.updateWorkout(id: workout.id, with: input)
-                } else {
-                    state.createWorkout(input)
+                Task {
+                    if let workout = context.workout {
+                        _ = try? await state.updateWorkout(id: workout.id, with: input)
+                    } else {
+                        _ = try? await state.createWorkout(input)
+                    }
                 }
             }
         }
@@ -56,7 +58,7 @@ struct RunnerDashboardView: View {
             presenting: workoutPendingDeletion
         ) { workout in
             Button("Delete", role: .destructive) {
-                state.deleteWorkout(id: workout.id)
+                Task { _ = try? await state.deleteWorkout(id: workout.id) }
                 workoutPendingDeletion = nil
             }
             Button("Cancel", role: .cancel) {

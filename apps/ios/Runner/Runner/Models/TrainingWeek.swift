@@ -3,12 +3,32 @@ import Foundation
 struct WeekSummary: Hashable, Sendable {
     let weekStart: Date
     let workouts: [Workout]
+    private let reportedPlannedMileage: Double?
+    private let reportedActualMileage: Double?
+
+    init(
+        weekStart: Date,
+        workouts: [Workout],
+        plannedMileage: Double? = nil,
+        actualMileage: Double? = nil
+    ) {
+        self.weekStart = weekStart
+        self.workouts = workouts
+        self.reportedPlannedMileage = plannedMileage
+        self.reportedActualMileage = actualMileage
+    }
 
     var actualMileage: Double {
-        workouts.reduce(0) { total, workout in
+        if let reportedActualMileage { return reportedActualMileage }
+        return workouts.reduce(0) { total, workout in
             guard workout.kind == .run, workout.hasActualExecution else { return total }
             return total + (workout.distanceMiles ?? 0)
         }
+    }
+
+    var plannedMileage: Double {
+        if let reportedPlannedMileage { return reportedPlannedMileage }
+        return workouts.reduce(0) { $0 + ($1.plannedDistanceMiles ?? 0) }
     }
 
     var totalDurationSeconds: Int {
@@ -34,6 +54,13 @@ struct WeekSummary: Hashable, Sendable {
 struct MileageTrendPoint: Identifiable, Hashable, Sendable {
     let weekStart: Date
     let actualMileage: Double
+    let plannedMileage: Double
+
+    init(weekStart: Date, actualMileage: Double, plannedMileage: Double = 0) {
+        self.weekStart = weekStart
+        self.actualMileage = actualMileage
+        self.plannedMileage = plannedMileage
+    }
 
     var id: Date { weekStart }
 }

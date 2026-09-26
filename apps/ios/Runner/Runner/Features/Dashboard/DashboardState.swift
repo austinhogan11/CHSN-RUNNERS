@@ -9,8 +9,9 @@ final class DashboardState {
     let currentWeekStart: Date
     private(set) var displayedWeekStart: Date
     private(set) var workouts: [Workout]
-    private let baselineTrend: [MileageTrendPoint]
+    private var baselineTrend: [MileageTrendPoint]
     private let calendar: Calendar
+    private let repository: any WorkoutRepository
     private var locallyChangedWeeks: Set<Date>
     private var trendWindowEndIndex: Int?
     var selectedDate: Date
@@ -22,7 +23,8 @@ final class DashboardState {
         workouts: [Workout],
         trend: [MileageTrendPoint],
         selectedDate: Date,
-        calendar: Calendar = .runner
+        calendar: Calendar = .runner,
+        repository: (any WorkoutRepository)? = nil
     ) {
         let normalizedCurrentWeek = RunnerCalendar.mondayStartingWeek(
             containing: currentWeekStart,
@@ -39,6 +41,11 @@ final class DashboardState {
         self.baselineTrend = trend.sorted { $0.weekStart < $1.weekStart }
         self.selectedDate = selectedDate
         self.calendar = calendar
+        self.repository = repository ?? InMemoryWorkoutRepository(
+            workouts: workouts,
+            trend: trend,
+            calendar: calendar
+        )
         self.locallyChangedWeeks = [normalizedCurrentWeek]
         self.trendWindowEndIndex = nil
         self.selectedTrendWeekStart = normalizedCurrentWeek
@@ -170,34 +177,46 @@ final class DashboardState {
         move(to: currentWeekStart)
     }
 
+    func refreshDisplayedWeek() async throws {
+        let summary = try await repository.loadWeek(containing: displayedWeekStart)
+        workouts.removeAll {
+            RunnerCalendar.mondayStartingWeek(containing: $0.date, calendar: calendar) == displayedWeekStart
+        }
+        workouts.append(contentsOf: summary.workouts)
+        locallyChangedWeeks.remove(displayedWeekStart)
+    }
+
+    func refreshTrend(ending endDate: Date, weeks: Int) async throws {
+        baselineTrend = try await repository.loadMileageTrend(ending: endDate, weeks: weeks)
+            .sorted { $0.weekStart < $1.weekStart }
+        locallyChangedWeeks.removeAll()
+        trendWindowEndIndex = nil
+        selectNewestVisibleTrendPoint()
+    }
+
     @discardableResult
-    func createWorkout(_ input: WorkoutInput) -> Workout {
-        let workout = Workout(
-            date: input.date,
-            kind: .run,
-            title: input.title,
-            startTime: input.startTime,
-            durationSeconds: input.durationSeconds,
-            distanceMiles: input.distanceMiles
-        )
+    func createWorkout(_ input: WorkoutInput) async throws -> Workout {
+        let workout = try await repository.createWorkout(input)
         workouts.append(workout)
         markWeekChanged(containing: workout.date)
         return workout
     }
 
     @discardableResult
-    func updateWorkout(id: Workout.ID, with input: WorkoutInput) -> Bool {
+    func updateWorkout(id: Workout.ID, with input: WorkoutInput) async throws -> Bool {
         guard let index = workouts.firstIndex(where: { $0.id == id }) else { return false }
         let originalDate = workouts[index].date
-        workouts[index] = workouts[index].updating(with: input)
+        workouts[index] = try await repository.updateWorkout(id: id, with: input)
         markWeekChanged(containing: originalDate)
         return true
     }
 
     @discardableResult
-    func deleteWorkout(id: Workout.ID) -> Bool {
+    func deleteWorkout(id: Workout.ID) async throws -> Bool {
         guard let index = workouts.firstIndex(where: { $0.id == id }) else { return false }
-        let removed = workouts.remove(at: index)
+        let removed = workouts[index]
+        try await repository.deleteWorkout(id: id)
+        workouts.remove(at: index)
         markWeekChanged(containing: removed.date)
         return true
     }

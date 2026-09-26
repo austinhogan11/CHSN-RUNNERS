@@ -23,6 +23,7 @@
 /* Begin PBXFileReference section */
 		D9ABE1083066B20700CF71F3 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9D48BCE306609CF00E9DF0B /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9DECB6B306767C200043376 /* Runner.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Runner.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -73,6 +74,7 @@
 		D9D48BC5306609CF00E9DF0B = {
 			isa = PBXGroup;
 			children = (
+				D9DECB6B306767C200043376 /* Runner.xctestplan */,
 				D9D48BD0306609CF00E9DF0B /* Runner */,
 				D9ABE1093066B20700CF71F3 /* RunnerTests */,
 				D9D48BCF306609CF00E9DF0B /* Products */,
