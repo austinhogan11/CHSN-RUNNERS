@@ -1,0 +1,59 @@
+name: iOS CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/ios/**"
+      - ".github/workflows/ios-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/ios/**"
+      - ".github/workflows/ios-ci.yml"
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26.6
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app
+          xcodebuild -version
+
+      - name: Select an available iPhone simulator
+        run: |
+          SIMULATOR_ID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ { print $2; exit }')"
+          if [[ -z "$SIMULATOR_ID" ]]; then
+            echo "No available iPhone simulator was found."
+            exit 1
+          fi
+          echo "DESTINATION=platform=iOS Simulator,id=$SIMULATOR_ID" >> "$GITHUB_ENV"
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project apps/ios/Runner/Runner.xcodeproj \
+            -scheme Runner
+
+      - name: Build for testing
+        run: |
+          xcodebuild build-for-testing \
+            -project apps/ios/Runner/Runner.xcodeproj \
+            -scheme Runner \
+            -destination "$DESTINATION" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Run Runner test plan
+        run: |
+          xcodebuild test-without-building \
+            -project apps/ios/Runner/Runner.xcodeproj \
+            -scheme Runner \
+            -testPlan Runner \
+            -destination "$DESTINATION" \
+            CODE_SIGNING_ALLOWED=NO
