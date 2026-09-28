@@ -171,7 +171,12 @@ def test_unique_nested_ids_are_valid_for_sessions_and_templates() -> None:
 @pytest.mark.parametrize(
     "planned_set",
     [
-        {"set_number": 1, "target_reps": 5, "percentage": 65},
+        {
+            "set_number": 1,
+            "target_reps": 5,
+            "percentage": 65,
+            "max_source": "bench_press",
+        },
         {
             "set_number": 1,
             "target_distance": 20,
@@ -192,6 +197,110 @@ def test_empty_prescription_and_distance_without_unit_are_rejected() -> None:
         PlannedSetInput(set_number=1, target_weight=100)
     with pytest.raises(ValidationError, match="provided together"):
         PlannedSetInput(set_number=1, target_distance=20)
+
+
+@pytest.mark.parametrize("model", [PlannedSetInput, TemplatePlannedSetInput])
+def test_target_reps_must_be_positive_when_provided(
+    model: type[PlannedSetInput] | type[TemplatePlannedSetInput],
+) -> None:
+    with pytest.raises(ValidationError, match="greater than 0"):
+        model.model_validate({"set_number": 1, "target_reps": 0})
+
+    assert ActualSet(planned_set_id="set-1", actual_reps=0)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"set_number": 1, "target_reps": 5, "percentage": 65},
+        {"set_number": 1, "target_reps": 5, "max_source": "bench_press"},
+    ],
+)
+def test_session_percentage_and_max_source_must_be_paired(
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError, match="provided together"):
+        PlannedSetInput.model_validate(payload)
+
+
+def test_session_percentage_snapshot_and_fixed_weight_are_valid() -> None:
+    resolved = PlannedSetInput(
+        set_number=1,
+        target_reps=5,
+        percentage=65,
+        max_source="bench_press",
+        max_value_at_creation=285,
+        target_weight=185,
+    )
+    fixed = PlannedSetInput(set_number=1, target_reps=8, target_weight=70)
+
+    assert resolved.max_value_at_creation == 285
+    assert resolved.target_weight == 185
+    assert fixed.percentage is None
+    assert fixed.target_weight == 70
+
+
+def test_actual_distance_requires_distance_target_on_referenced_planned_set() -> None:
+    with pytest.raises(ValidationError, match="planned distance and unit"):
+        ExerciseBlockInput(
+            id="block-1",
+            exercise_id="bench_press",
+            order=1,
+            planned_sets=[PlannedSetInput(id="set-1", set_number=1, target_reps=5)],
+            actual_sets=[
+                ActualSet(
+                    planned_set_id="set-1",
+                    actual_distance=20,
+                    completed=True,
+                )
+            ],
+        )
+
+
+def test_rep_distance_and_duration_actuals_remain_valid() -> None:
+    rep_block = ExerciseBlockInput(
+        id="rep-block",
+        exercise_id="bench_press",
+        order=1,
+        planned_sets=[PlannedSetInput(id="rep-set", set_number=1, target_reps=5)],
+        actual_sets=[ActualSet(planned_set_id="rep-set", actual_reps=0)],
+    )
+    distance_block = ExerciseBlockInput(
+        id="distance-block",
+        exercise_id="farmers_walk",
+        order=2,
+        planned_sets=[
+            PlannedSetInput(
+                id="distance-set",
+                set_number=1,
+                target_distance=20,
+                distance_unit=DistanceUnit.YARDS,
+            )
+        ],
+        actual_sets=[ActualSet(planned_set_id="distance-set", actual_distance=22)],
+    )
+    duration_block = ExerciseBlockInput(
+        id="duration-block",
+        exercise_id="farmers_walk",
+        order=3,
+        planned_sets=[
+            PlannedSetInput(
+                id="duration-set",
+                set_number=1,
+                target_duration_seconds=30,
+            )
+        ],
+        actual_sets=[
+            ActualSet(
+                planned_set_id="duration-set",
+                actual_duration_seconds=35,
+            )
+        ],
+    )
+
+    assert rep_block.actual_sets[0].actual_reps == 0
+    assert distance_block.actual_sets[0].actual_distance == 22
+    assert duration_block.actual_sets[0].actual_duration_seconds == 35
 
 
 def test_percentage_template_is_unresolved_and_fixed_weight_template_is_valid() -> None:

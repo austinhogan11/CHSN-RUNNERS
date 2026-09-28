@@ -62,7 +62,7 @@ class PlannedSetInput(BaseModel):
 
     id: str | None = Field(default=None, min_length=1)
     set_number: int = Field(ge=1)
-    target_reps: int | None = Field(default=None, ge=0)
+    target_reps: int | None = Field(default=None, gt=0)
     target_distance: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     distance_unit: DistanceUnit | None = None
     target_duration_seconds: int | None = Field(default=None, gt=0)
@@ -95,13 +95,14 @@ class PlannedSetInput(BaseModel):
             self.distance_unit,
             self.target_duration_seconds,
         )
+        _validate_session_percentage(self.percentage, self.max_source)
         return self
 
 
 class PlannedSet(BaseModel):
     id: str
     set_number: int = Field(ge=1)
-    target_reps: int | None = Field(default=None, ge=0)
+    target_reps: int | None = Field(default=None, gt=0)
     target_distance: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     distance_unit: DistanceUnit | None = None
     target_duration_seconds: int | None = Field(default=None, gt=0)
@@ -134,6 +135,7 @@ class PlannedSet(BaseModel):
             self.distance_unit,
             self.target_duration_seconds,
         )
+        _validate_session_percentage(self.percentage, self.max_source)
         return self
 
 
@@ -179,6 +181,7 @@ class ExerciseBlockInput(BaseModel):
             raise ValueError("actual sets must reference each planned set at most once")
         if not set(actual_ids).issubset(supplied_ids):
             raise ValueError("actual sets must reference a supplied planned set id")
+        _validate_actual_distances(self.planned_sets, self.actual_sets)
         return self
 
 
@@ -202,6 +205,7 @@ class ExerciseBlock(BaseModel):
             raise ValueError(
                 "actual sets must reference a planned set in the same block"
             )
+        _validate_actual_distances(self.planned_sets, self.actual_sets)
         return self
 
 
@@ -270,7 +274,7 @@ class TemplatePlannedSetInput(BaseModel):
 
     id: str | None = Field(default=None, min_length=1)
     set_number: int = Field(ge=1)
-    target_reps: int | None = Field(default=None, ge=0)
+    target_reps: int | None = Field(default=None, gt=0)
     target_distance: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     distance_unit: DistanceUnit | None = None
     target_duration_seconds: int | None = Field(default=None, gt=0)
@@ -304,7 +308,7 @@ class TemplatePlannedSetInput(BaseModel):
 class TemplatePlannedSet(BaseModel):
     id: str
     set_number: int = Field(ge=1)
-    target_reps: int | None = Field(default=None, ge=0)
+    target_reps: int | None = Field(default=None, gt=0)
     target_distance: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     distance_unit: DistanceUnit | None = None
     target_duration_seconds: int | None = Field(default=None, gt=0)
@@ -544,3 +548,34 @@ def _validate_template_weight(
         )
     if percentage is None and max_source is not None:
         raise ValueError("max source requires a percentage")
+
+
+def _validate_session_percentage(
+    percentage: float | None,
+    max_source: str | None,
+) -> None:
+    if (percentage is None) != (max_source is None):
+        raise ValueError("percentage and max source must be provided together")
+
+
+def _validate_actual_distances(
+    planned_sets: Sequence[PlannedSetInput] | Sequence[PlannedSet],
+    actual_sets: Sequence[ActualSet],
+) -> None:
+    planned_by_id = {
+        planned_set.id: planned_set
+        for planned_set in planned_sets
+        if planned_set.id is not None
+    }
+    for actual_set in actual_sets:
+        if actual_set.actual_distance is None:
+            continue
+        planned_set = planned_by_id.get(actual_set.planned_set_id)
+        if (
+            planned_set is None
+            or planned_set.target_distance is None
+            or planned_set.distance_unit is None
+        ):
+            raise ValueError(
+                "actual distance requires a referenced planned distance and unit"
+            )

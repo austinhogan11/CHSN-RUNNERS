@@ -404,6 +404,58 @@ def test_session_supports_distance_and_duration_execution() -> None:
     assert blocks[1]["actual_sets"][0]["actual_duration_seconds"] == 35
 
 
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"percentage": 65},
+        {"max_source": "bench_press"},
+    ],
+)
+def test_session_route_requires_percentage_and_max_source_pairing(
+    fields: dict[str, object],
+) -> None:
+    payload = session_payload()
+    blocks = cast(list[dict[str, Any]], payload["exercise_blocks"])
+    planned_sets = cast(list[dict[str, Any]], blocks[0]["planned_sets"])
+    planned_sets[0].update(fields)
+
+    response = client.post("/strength/sessions", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_session_route_accepts_resolved_percentage_and_fixed_weight_sets() -> None:
+    payload = session_payload()
+    blocks = cast(list[dict[str, Any]], payload["exercise_blocks"])
+    percentage_sets = cast(list[dict[str, Any]], blocks[0]["planned_sets"])
+    percentage_sets[0].update(
+        {
+            "percentage": 65,
+            "max_source": "bench_press",
+            "max_value_at_creation": 285,
+            "target_weight": 185,
+        }
+    )
+
+    response = client.post("/strength/sessions", json=payload)
+
+    assert response.status_code == 201
+    response_blocks = response.json()["exercise_blocks"]
+    assert response_blocks[0]["planned_sets"][0]["target_weight"] == 185.0
+    assert response_blocks[1]["planned_sets"][0]["target_weight"] == 60.0
+
+
+def test_session_route_rejects_actual_distance_for_rep_only_set() -> None:
+    payload = session_payload()
+    blocks = cast(list[dict[str, Any]], payload["exercise_blocks"])
+    actual_sets = cast(list[dict[str, Any]], blocks[0]["actual_sets"])
+    actual_sets[0]["actual_distance"] = 20
+
+    response = client.post("/strength/sessions", json=payload)
+
+    assert response.status_code == 422
+
+
 @pytest.mark.parametrize("method", ["get", "patch", "delete"])
 def test_cross_user_session_access_is_hidden(
     repositories: StrengthRepositories,
@@ -503,6 +555,9 @@ def test_cross_user_template_access_is_hidden(
     [
         lambda payload: payload["exercise_blocks"][0]["planned_sets"][0].update(
             {"target_reps": -1}
+        ),
+        lambda payload: payload["exercise_blocks"][0]["planned_sets"][0].update(
+            {"target_reps": 0}
         ),
         lambda payload: payload["exercise_blocks"][0]["planned_sets"][0].update(
             {"target_weight": -1}
