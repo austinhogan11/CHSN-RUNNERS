@@ -76,7 +76,9 @@ Suggested fields:
 - [x] id
 - [x] parent exercise block is implicit in the nested document
 - [x] set_number
-- [x] target_reps
+- [x] optional target_reps
+- [x] optional target_distance and yards/meters unit
+- [x] optional target_duration_seconds
 - [x] optional percentage
 - [x] optional max_source
 - [x] optional max_value_at_creation
@@ -87,6 +89,8 @@ Suggested fields:
 Suggested fields:
 - [x] planned_set_id
 - [x] actual_reps
+- [x] actual_distance
+- [x] actual_duration_seconds
 - [x] actual_weight
 - [x] completed
 - [x] optional notes
@@ -141,8 +145,15 @@ Suggested fields:
   collection; `null` is invalid for required fields and collections.
 - Planned and actual sets are separate. Templates contain prescription only,
   and nested IDs can be regenerated later when copy/template instantiation is
-  implemented. Percentage calculations remain deferred, while resolved
-  `max_value_at_creation` and `target_weight` values can already be persisted.
+  implemented. Block IDs and planned-set IDs are unique within each containing
+  session or template document.
+- Strength V1 weights are pounds-only. Planned sets support reps, distance in
+  yards or meters, and duration; actual sets store the corresponding execution.
+- Templates store reusable prescriptions. Percentage templates retain only the
+  percentage and max source, while fixed-weight templates may retain their
+  prescribed weight. Dated sessions can freeze `max_value_at_creation` and the
+  resolved `target_weight`; percentage calculation and template instantiation
+  remain deferred.
 
 ---
 

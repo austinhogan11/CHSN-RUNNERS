@@ -49,3 +49,11 @@ PATCH leaves omitted fields unchanged and clears nullable fields that are
 explicitly sent as `null`. DynamoDB removes cleared optional attributes instead
 of storing `NULL` values. Missing IDs and IDs owned by another user both return
 `404` so the API does not reveal another user's workout IDs.
+
+## Strength contracts
+
+Strength V1 weight values are pounds. Planned sets support rep, distance
+(`yards` or `meters`), and duration targets. Templates store reusable
+prescriptions: percentage sets retain their percentage and max source, while
+resolved max/weight snapshots belong only to dated strength sessions. Actual
+distance values use their planned set's distance unit.

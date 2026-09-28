@@ -68,7 +68,6 @@ def put_max(
         id=str(uuid4()),
         exercise_key=exercise_key,
         value=payload.value,
-        unit=payload.unit,
         effective_date=payload.effective_date,
         created_at=datetime.now(UTC),
     )
