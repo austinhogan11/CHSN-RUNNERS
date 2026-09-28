@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 
@@ -64,6 +64,10 @@ const trendResponse = [
   },
 ];
 
+beforeEach(() => {
+  window.history.replaceState({}, "", "/");
+});
+
 afterEach(() => {
   clerk.signedIn = true;
   clerk.getToken.mockReset();
@@ -75,6 +79,33 @@ afterEach(() => {
 });
 
 describe("App", () => {
+  it("switches between the Running and Strength routes", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.startsWith("/api/weeks/")) return response(weekResponse);
+      if (url.startsWith("/api/trends/mileage")) return response(trendResponse);
+      if (url === "/api/strength/maxes") return response({ current: [], history: [] });
+      if (url === "/api/strength/exercises") return response([]);
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByRole("region", { name: "Workouts" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Running" })).toHaveAttribute("aria-current", "page");
+
+    fireEvent.click(screen.getByRole("link", { name: "Strength" }));
+
+    expect(await screen.findByRole("heading", { name: "Strength", level: 2 })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/strength");
+    expect(screen.getByRole("link", { name: "Strength" })).toHaveAttribute("aria-current", "page");
+
+    fireEvent.click(screen.getByRole("link", { name: "Running" }));
+
+    expect(await screen.findByRole("region", { name: "Workouts" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
+  });
+
   it("shows the Runner sign-in experience while signed out", () => {
     clerk.signedIn = false;
     const fetchMock = vi.fn();
@@ -712,3 +743,11 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 });
+
+function response(body: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  };
+}

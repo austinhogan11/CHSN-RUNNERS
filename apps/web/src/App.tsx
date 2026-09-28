@@ -19,6 +19,8 @@ import type {
   WorkoutUpdate,
 } from "./features/workouts/types";
 import { hasActualExecution } from "./features/workouts/utils";
+import { StrengthPage } from "./features/strength/components/StrengthPage";
+import { useWeekNavigation } from "./features/training/useWeekNavigation";
 import { addCalendarDays, formatLocalDate, getMondayWeekStart } from "./utils/date";
 import "./App.css";
 
@@ -29,9 +31,35 @@ function App() {
         <SignInExperience />
       </Show>
       <Show when="signed-in">
-        <Dashboard />
+        <AuthenticatedApp />
       </Show>
     </>
+  );
+}
+
+type TrainingMode = "running" | "strength";
+
+function AuthenticatedApp() {
+  const [mode, setMode] = useState<TrainingMode>(() => modeForPath(window.location.pathname));
+
+  useEffect(() => {
+    const handlePopState = () => setMode(modeForPath(window.location.pathname));
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  function navigate(nextMode: TrainingMode) {
+    if (nextMode === mode) return;
+    const path = nextMode === "strength" ? "/strength" : "/";
+    window.history.pushState({}, "", path);
+    setMode(nextMode);
+  }
+
+  return (
+    <main className="dashboard">
+      <DashboardHeader mode={mode} onNavigate={navigate} />
+      {mode === "strength" ? <StrengthPage /> : <Dashboard />}
+    </main>
   );
 }
 
@@ -53,18 +81,34 @@ function SignInExperience() {
 
 function Dashboard() {
   const { getToken } = useAuth();
-  const [week, setWeek] = useState<WeekSummaryData | null>(null);
   const [trend, setTrend] = useState<MileageTrendPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [weekError, setWeekError] = useState<string | null>(null);
-  const [isWeekLoading, setIsWeekLoading] = useState(false);
   const [trendError, setTrendError] = useState<string | null>(null);
   const [isTrendLoading, setIsTrendLoading] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const today = useMemo(() => formatLocalDate(new Date()), []);
   const currentWeekStart = useMemo(() => getMondayWeekStart(today), [today]);
-  const [displayedWeekStart, setDisplayedWeekStart] = useState(currentWeekStart);
   const [trendEndWeekStart, setTrendEndWeekStart] = useState(currentWeekStart);
+
+  const loadRunningWeek = useCallback(async (weekStart: string): Promise<WeekSummaryData> => {
+    const token = await getToken();
+    if (!token) throw new WorkoutApiError("No active Clerk session token", 401);
+    return getWeek(weekStart, token);
+  }, [getToken]);
+  const {
+    week,
+    setWeek,
+    displayedWeekStart,
+    isCurrentWeek,
+    isWeekLoading,
+    weekError,
+    showPreviousWeek,
+    showNextWeek,
+    showCurrentWeek,
+  } = useWeekNavigation({
+    currentWeekStart,
+    loadWeek: loadRunningWeek,
+  });
 
   async function requireToken(): Promise<string> {
     const token = await getToken();
@@ -81,7 +125,7 @@ function Dashboard() {
     ]);
     setWeek(weekData);
     setTrend(trendData);
-  }, [currentWeekStart]);
+  }, [currentWeekStart, setWeek]);
 
   useEffect(() => {
     getToken()
@@ -128,22 +172,6 @@ function Dashboard() {
     await refreshAfterMutation(token);
   }
 
-  async function navigateToWeek(targetWeekStart: string): Promise<void> {
-    if (isWeekLoading || targetWeekStart === displayedWeekStart) return;
-    setIsWeekLoading(true);
-    setWeekError(null);
-    try {
-      const token = await requireToken();
-      const weekData = await getWeek(targetWeekStart, token);
-      setWeek(weekData);
-      setDisplayedWeekStart(targetWeekStart);
-    } catch {
-      setWeekError("Unable to load selected week.");
-    } finally {
-      setIsWeekLoading(false);
-    }
-  }
-
   async function navigateTrend(targetEndWeekStart: string): Promise<void> {
     if (isTrendLoading || targetEndWeekStart > currentWeekStart || targetEndWeekStart === trendEndWeekStart) return;
     setIsTrendLoading(true);
@@ -176,26 +204,18 @@ function Dashboard() {
 
   if (error) {
     return (
-      <main className="dashboard">
-        <DashboardHeader />
-        <p className="panel page-message" role="alert">{error}</p>
-      </main>
+      <p className="panel page-message" role="alert">{error}</p>
     );
   }
 
   if (!week || !trend) {
     return (
-      <main className="dashboard">
-        <DashboardHeader />
-        <p className="panel page-message" role="status">Loading dashboard...</p>
-      </main>
+      <p className="panel page-message" role="status">Loading dashboard...</p>
     );
   }
 
   return (
-    <main className="dashboard">
-      <DashboardHeader />
-
+    <>
       <MileageTrend
         points={trend}
         isLoading={isTrendLoading}
@@ -211,17 +231,17 @@ function Dashboard() {
         weekStart={week.week_start}
         workouts={week.workouts}
         actualDistance={week.actual_distance}
-        isCurrentWeek={displayedWeekStart === currentWeekStart}
+        isCurrentWeek={isCurrentWeek}
         isWeekLoading={isWeekLoading}
         weekError={weekError}
-        onPreviousWeek={() => navigateToWeek(addCalendarDays(displayedWeekStart, -7))}
-        onNextWeek={() => navigateToWeek(addCalendarDays(displayedWeekStart, 7))}
-        onCurrentWeek={() => navigateToWeek(currentWeekStart)}
+        onPreviousWeek={showPreviousWeek}
+        onNextWeek={showNextWeek}
+        onCurrentWeek={showCurrentWeek}
         onCreate={handleCreate}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
       />
-    </main>
+    </>
   );
 }
 
@@ -250,18 +270,49 @@ function updateWeek(
   };
 }
 
-function DashboardHeader() {
+interface DashboardHeaderProps {
+  mode: TrainingMode;
+  onNavigate: (mode: TrainingMode) => void;
+}
+
+function DashboardHeader({ mode, onNavigate }: DashboardHeaderProps) {
   return (
     <header className="dashboard-header">
       <div className="brand">
         <span className="brand-mark" aria-hidden="true">R</span>
         <h1>Runner</h1>
       </div>
+      <nav className="training-mode-navigation" aria-label="Training mode">
+        <a
+          href="/"
+          aria-current={mode === "running" ? "page" : undefined}
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate("running");
+          }}
+        >
+          Running
+        </a>
+        <a
+          href="/strength"
+          aria-current={mode === "strength" ? "page" : undefined}
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate("strength");
+          }}
+        >
+          Strength
+        </a>
+      </nav>
       <div className="account-control" aria-label="Runner account">
         <UserButton />
       </div>
     </header>
   );
+}
+
+function modeForPath(pathname: string): TrainingMode {
+  return pathname === "/strength" ? "strength" : "running";
 }
 
 export default App;

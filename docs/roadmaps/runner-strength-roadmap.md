@@ -8,9 +8,9 @@ Use the PPSA Sport Strength plan as a representative validation case because it 
 ---
 
 ## Product Principles
-- [ ] Running and Strength are separate but parallel training views
-- [ ] Keep the existing Running dashboard intact
-- [ ] Add an easy Running / Strength switch
+- [x] Running and Strength are separate but parallel training views
+- [x] Keep the existing Running dashboard intact
+- [x] Add an easy Running / Strength switch
 - [ ] Separate planned prescription from actual execution
 - [ ] Make workouts highly reusable through copy/move/template operations
 - [ ] Never copy completed execution data into a duplicated session by default
@@ -161,23 +161,23 @@ Suggested fields:
 ## Goal
 Let the athlete define the source data for prescriptions.
 
-- [ ] Add Strength Settings / Maxes screen
-- [ ] Bench Press max
-- [ ] Back Squat max
-- [ ] Deadlift max
-- [ ] Power Clean max
-- [ ] Front Squat max
-- [ ] Snatch max
+- [x] Add Strength Settings / Maxes screen
+- [x] Bench Press max
+- [x] Back Squat max
+- [x] Deadlift max
+- [x] Power Clean max
+- [x] Front Squat max
+- [x] Snatch max
 - [ ] Custom max source
-- [ ] Built-in exercise library
-- [ ] Custom exercises
-- [ ] Exercise can reference a default max source
-- [ ] Max updates preserve historical values
+- [x] Built-in exercise library
+- [x] Custom exercises
+- [x] Exercise can reference a default max source
+- [x] Max updates preserve historical values
 
 ### Acceptance Criteria
-- [ ] All required maxes are configurable
-- [ ] Exercises reference the correct max source
-- [ ] Historical workouts remain stable when maxes change
+- [x] All required maxes are configurable
+- [x] Exercises reference the correct max source
+- [x] Historical workouts remain stable when maxes change
 
 ---
 
