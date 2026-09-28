@@ -8,6 +8,11 @@ variables, which Terraform manages:
 
 - `WORKOUT_REPOSITORY=dynamodb`
 - `WORKOUT_TABLE_NAME=chsn-runners-workouts`
+- `STRENGTH_REPOSITORY=dynamodb`
+- `STRENGTH_MAX_TABLE_NAME=chsn-runners-strength-maxes`
+- `STRENGTH_EXERCISE_TABLE_NAME=chsn-runners-strength-exercises`
+- `STRENGTH_SESSION_TABLE_NAME=chsn-runners-strength-sessions`
+- `STRENGTH_TEMPLATE_TABLE_NAME=chsn-runners-strength-templates`
 - `CLERK_ISSUER=https://your-instance.clerk.accounts.dev`
 - `CLERK_AUTHORIZED_PARTIES=https://your-frontend.example`
 
@@ -44,3 +49,11 @@ PATCH leaves omitted fields unchanged and clears nullable fields that are
 explicitly sent as `null`. DynamoDB removes cleared optional attributes instead
 of storing `NULL` values. Missing IDs and IDs owned by another user both return
 `404` so the API does not reveal another user's workout IDs.
+
+## Strength contracts
+
+Strength V1 weight values are pounds. Planned sets support rep, distance
+(`yards` or `meters`), and duration targets. Templates store reusable
+prescriptions: percentage sets retain their percentage and max source, while
+resolved max/weight snapshots belong only to dated strength sessions. Actual
+distance values use their planned set's distance unit.

@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     workout_repository: Literal["memory", "dynamodb"] = "memory"
     workout_table_name: str | None = None
     workout_demo_user_id: str = "local-development-user"
+    strength_repository: Literal["memory", "dynamodb"] = "memory"
+    strength_max_table_name: str | None = None
+    strength_exercise_table_name: str | None = None
+    strength_session_table_name: str | None = None
+    strength_template_table_name: str | None = None
     clerk_issuer: str | None = None
     clerk_jwks_url: str | None = None
     clerk_authorized_parties: str = ""

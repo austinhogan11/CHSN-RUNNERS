@@ -309,7 +309,7 @@ data "aws_iam_policy_document" "github_actions_permissions" {
   }
 
   statement {
-    sid = "RunnerWorkoutTable"
+    sid = "RunnerDynamoDBTables"
 
     actions = [
       "dynamodb:CreateTable",
@@ -325,6 +325,10 @@ data "aws_iam_policy_document" "github_actions_permissions" {
 
     resources = [
       "arn:aws:dynamodb:us-east-1:537690166345:table/chsn-runners-workouts",
+      "arn:aws:dynamodb:us-east-1:537690166345:table/chsn-runners-strength-exercises",
+      "arn:aws:dynamodb:us-east-1:537690166345:table/chsn-runners-strength-maxes",
+      "arn:aws:dynamodb:us-east-1:537690166345:table/chsn-runners-strength-sessions",
+      "arn:aws:dynamodb:us-east-1:537690166345:table/chsn-runners-strength-templates",
     ]
   }
 }

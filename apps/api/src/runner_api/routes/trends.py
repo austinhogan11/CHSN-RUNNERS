@@ -4,15 +4,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
 from runner_api.auth import CurrentUser, get_current_user
+from runner_api.dates import get_week_start
 from runner_api.dependencies import get_workout_repository
 from runner_api.models.workout import MileageTrendPoint, has_actual_execution
 from runner_api.repositories.workouts import WorkoutRepository
 
 router = APIRouter(prefix="/trends", tags=["trends"])
-
-
-def get_week_start(day: date) -> date:
-    return day - timedelta(days=day.weekday())
 
 
 @router.get("/mileage", response_model=list[MileageTrendPoint])
