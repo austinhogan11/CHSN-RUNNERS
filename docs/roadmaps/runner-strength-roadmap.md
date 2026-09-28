@@ -26,108 +26,123 @@ Use the PPSA Sport Strength plan as a representative validation case because it 
 Create the backend foundation.
 
 ### Domain
-- [ ] StrengthMax
-- [ ] Exercise
-- [ ] StrengthSession
-- [ ] ExerciseBlock
-- [ ] PlannedSet
-- [ ] ActualSet
-- [ ] StrengthTemplate
+- [x] StrengthMax
+- [x] Exercise
+- [x] StrengthSession
+- [x] ExerciseBlock
+- [x] PlannedSet
+- [x] ActualSet
+- [x] StrengthTemplate
 
 ### StrengthMax
 Suggested fields:
-- [ ] id
-- [ ] user_id
-- [ ] exercise_key
-- [ ] value
-- [ ] unit
-- [ ] effective_date
+- [x] id
+- [x] user_id
+- [x] exercise_key
+- [x] value
+- [x] unit
+- [x] effective_date
 
 ### Exercise
 Suggested fields:
-- [ ] id
-- [ ] user_id or system/global owner
-- [ ] name
-- [ ] category
-- [ ] default_max_source
-- [ ] is_custom
+- [x] id
+- [x] user_id or system/global owner
+- [x] name
+- [x] category
+- [x] default_max_source
+- [x] is_custom
 
 ### StrengthSession
 Suggested fields:
-- [ ] id
-- [ ] user_id
-- [ ] date
-- [ ] title
-- [ ] notes
-- [ ] completed
-- [ ] ordered exercise blocks
+- [x] id
+- [x] user_id
+- [x] date
+- [x] title
+- [x] notes
+- [x] actual-set completion; session status remains derived
+- [x] ordered exercise blocks
 
 ### ExerciseBlock
 Suggested fields:
-- [ ] id
-- [ ] session_id
-- [ ] exercise_id
-- [ ] order
-- [ ] optional group_id for supersets
-- [ ] optional label such as A1 / A2 / B1
+- [x] id
+- [x] parent session is implicit in the nested document
+- [x] exercise_id
+- [x] order
+- [x] optional group_id for supersets
+- [x] optional label such as A1 / A2 / B1
 
 ### PlannedSet
 Suggested fields:
-- [ ] id
-- [ ] exercise_block_id
-- [ ] set_number
-- [ ] target_reps
-- [ ] optional percentage
-- [ ] optional max_source
-- [ ] optional max_value_at_creation
-- [ ] optional target_weight
-- [ ] optional rest_seconds
+- [x] id
+- [x] parent exercise block is implicit in the nested document
+- [x] set_number
+- [x] target_reps
+- [x] optional percentage
+- [x] optional max_source
+- [x] optional max_value_at_creation
+- [x] optional target_weight
+- [x] optional rest_seconds
 
 ### ActualSet
 Suggested fields:
-- [ ] planned_set_id
-- [ ] actual_reps
-- [ ] actual_weight
-- [ ] completed
-- [ ] optional notes
+- [x] planned_set_id
+- [x] actual_reps
+- [x] actual_weight
+- [x] completed
+- [x] optional notes
 
 ### StrengthTemplate
 Suggested fields:
-- [ ] id
-- [ ] user_id
-- [ ] name
-- [ ] exercise blocks
-- [ ] superset groups
-- [ ] prescribed sets
+- [x] id
+- [x] user_id
+- [x] name
+- [x] exercise blocks
+- [x] superset groups
+- [x] prescribed sets
 
 ### Minimum API
 #### Maxes
-- [ ] GET /api/strength/maxes
-- [ ] PUT /api/strength/maxes/{exercise_key}
+- [x] GET /api/strength/maxes
+- [x] PUT /api/strength/maxes/{exercise_key}
 
 #### Exercises
-- [ ] GET /api/strength/exercises
-- [ ] POST /api/strength/exercises
+- [x] GET /api/strength/exercises
+- [x] POST /api/strength/exercises
 
 #### Sessions
-- [ ] GET /api/strength/weeks/{day}
-- [ ] GET /api/strength/sessions/{session_id}
-- [ ] POST /api/strength/sessions
-- [ ] PATCH /api/strength/sessions/{session_id}
-- [ ] DELETE /api/strength/sessions/{session_id}
+- [x] GET /api/strength/weeks/{day}
+- [x] GET /api/strength/sessions/{session_id}
+- [x] POST /api/strength/sessions
+- [x] PATCH /api/strength/sessions/{session_id}
+- [x] DELETE /api/strength/sessions/{session_id}
 
 #### Templates
-- [ ] GET /api/strength/templates
-- [ ] POST /api/strength/templates
-- [ ] PATCH /api/strength/templates/{template_id}
-- [ ] DELETE /api/strength/templates/{template_id}
+- [x] GET /api/strength/templates
+- [x] POST /api/strength/templates
+- [x] PATCH /api/strength/templates/{template_id}
+- [x] DELETE /api/strength/templates/{template_id}
 
 ### Acceptance Criteria
-- [ ] Authenticated user can save/read maxes
-- [ ] Authenticated user can create/read/update/delete a strength session
-- [ ] Session preserves exercise order, superset groups, and planned/actual sets
-- [ ] Clerk ownership is enforced
-- [ ] Backend tests pass
+- [x] Authenticated user can save/read maxes
+- [x] Authenticated user can create/read/update/delete a strength session
+- [x] Session preserves exercise order, superset groups, and planned/actual sets
+- [x] Clerk ownership is enforced
+- [x] Backend tests pass
+
+### Milestone 1 implementation notes
+- Strength uses four on-demand DynamoDB tables for max history, custom exercises,
+  sessions, and templates. Sessions and templates store their ordered nested
+  blocks and sets as whole documents; this preserves exact ordering without a
+  single-table entity encoding.
+- Built-in exercises live in the API, while only user-created exercises are
+  persisted. Every user-owned read and mutation uses the verified Clerk `sub`.
+- Session and template PATCH requests leave omitted fields unchanged. Explicit
+  `null` clears nullable notes, and an empty `exercise_blocks` list clears the
+  collection; `null` is invalid for required fields and collections.
+- Planned and actual sets are separate. Templates contain prescription only,
+  and nested IDs can be regenerated later when copy/template instantiation is
+  implemented. Percentage calculations remain deferred, while resolved
+  `max_value_at_creation` and `target_weight` values can already be persisted.
 
 ---
 

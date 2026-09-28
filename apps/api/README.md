@@ -8,6 +8,11 @@ variables, which Terraform manages:
 
 - `WORKOUT_REPOSITORY=dynamodb`
 - `WORKOUT_TABLE_NAME=chsn-runners-workouts`
+- `STRENGTH_REPOSITORY=dynamodb`
+- `STRENGTH_MAX_TABLE_NAME=chsn-runners-strength-maxes`
+- `STRENGTH_EXERCISE_TABLE_NAME=chsn-runners-strength-exercises`
+- `STRENGTH_SESSION_TABLE_NAME=chsn-runners-strength-sessions`
+- `STRENGTH_TEMPLATE_TABLE_NAME=chsn-runners-strength-templates`
 - `CLERK_ISSUER=https://your-instance.clerk.accounts.dev`
 - `CLERK_AUTHORIZED_PARTIES=https://your-frontend.example`
 

@@ -41,6 +41,16 @@ output "workout_table_name" {
   value       = aws_dynamodb_table.workouts.name
 }
 
+output "strength_table_names" {
+  description = "Names of the DynamoDB tables containing strength data."
+  value = {
+    maxes     = aws_dynamodb_table.strength_maxes.name
+    exercises = aws_dynamodb_table.strength_exercises.name
+    sessions  = aws_dynamodb_table.strength_sessions.name
+    templates = aws_dynamodb_table.strength_templates.name
+  }
+}
+
 output "custom_domain_certificate_arn" {
   description = "ARN of the ACM certificate requested for the Runner custom domains."
   value       = aws_acm_certificate.runner_custom_domain.arn

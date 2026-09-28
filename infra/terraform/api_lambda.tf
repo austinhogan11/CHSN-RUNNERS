@@ -50,11 +50,16 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      CLERK_AUTHORIZED_PARTIES = var.clerk_authorized_parties
-      CLERK_ISSUER             = var.clerk_issuer
-      ENVIRONMENT              = "production"
-      WORKOUT_REPOSITORY       = "dynamodb"
-      WORKOUT_TABLE_NAME       = aws_dynamodb_table.workouts.name
+      CLERK_AUTHORIZED_PARTIES     = var.clerk_authorized_parties
+      CLERK_ISSUER                 = var.clerk_issuer
+      ENVIRONMENT                  = "production"
+      STRENGTH_EXERCISE_TABLE_NAME = aws_dynamodb_table.strength_exercises.name
+      STRENGTH_MAX_TABLE_NAME      = aws_dynamodb_table.strength_maxes.name
+      STRENGTH_REPOSITORY          = "dynamodb"
+      STRENGTH_SESSION_TABLE_NAME  = aws_dynamodb_table.strength_sessions.name
+      STRENGTH_TEMPLATE_TABLE_NAME = aws_dynamodb_table.strength_templates.name
+      WORKOUT_REPOSITORY           = "dynamodb"
+      WORKOUT_TABLE_NAME           = aws_dynamodb_table.workouts.name
     }
   }
 
@@ -62,6 +67,8 @@ resource "aws_lambda_function" "api" {
     aws_iam_role_policy_attachment.api_lambda_basic_execution,
     aws_iam_role_policy.api_workout_reads,
     aws_iam_role_policy.api_workout_writes,
+    aws_iam_role_policy.api_strength_reads,
+    aws_iam_role_policy.api_strength_writes,
     aws_cloudwatch_log_group.api_lambda,
   ]
 
