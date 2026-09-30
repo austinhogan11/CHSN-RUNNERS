@@ -185,26 +185,40 @@ Let the athlete define the source data for prescriptions.
 ## Goal
 Build the Strength equivalent of the Running weekly dashboard.
 
-- [ ] Add Running / Strength top-level switch
-- [ ] Preserve current Running dashboard
-- [ ] Add Strength weekly navigation
-- [ ] Monday-Sunday selector
-- [ ] Selected-day strength session
-- [ ] Add new strength session
-- [ ] Add exercise
-- [ ] Remove exercise
-- [ ] Edit title
+- [x] Add Running / Strength top-level switch
+- [x] Preserve current Running dashboard
+- [x] Add Strength weekly navigation
+- [x] Monday-Sunday selector
+- [x] Selected-day strength session
+- [x] Add new strength session
+- [x] Add exercise
+- [x] Remove exercise
+- [x] Edit title
 - [ ] Reorder exercises
-- [ ] Add/delete sets
-- [ ] Set target reps
-- [ ] Set target percentage
-- [ ] Set fixed target weight
-- [ ] Save/reload session
+- [x] Add/delete sets
+- [x] Set target reps
+- [x] Set target percentage
+- [x] Set fixed target weight
+- [x] Save/reload session
 
 ### Acceptance Criteria
-- [ ] Complete daily strength workout can be authored in the web UI
-- [ ] Reload preserves the saved session
-- [ ] Running dashboard remains unchanged
+- [x] Complete daily strength workout can be authored in the web UI
+- [x] Reload preserves the saved session
+- [x] Running dashboard remains unchanged
+
+### Milestone 3 implementation notes
+- Strength reuses the same week navigation, weekday-index selection, and
+  Monday-Sunday selector mechanics as Running while keeping Strength sessions
+  and Running workouts as separate domain models.
+- A selected day may contain multiple independently editable sessions. Creates,
+  updates, and deletes refetch the displayed week so the UI reconciles to the
+  backend response instead of relying on optimistic persistence.
+- The editor replaces the complete ordered exercise-block collection on save.
+  It preserves existing nested IDs, appends new blocks and sets, and normalizes
+  order values after removals. Manual reordering remains deferred.
+- Percentage and max-source values can be authored together, but resolving a
+  percentage into a target weight remains Milestone 4 work. Actual-set entry
+  remains Milestone 5 work.
 
 ---
 

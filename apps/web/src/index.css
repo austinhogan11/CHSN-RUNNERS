@@ -38,6 +38,24 @@
   --danger-hover: var(--runner-danger-hover);
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+  --runner-bg: #f4f7f9;
+  --runner-surface: #ffffff;
+  --runner-surface-raised: #edf3f6;
+  --runner-border: #d6e0e5;
+  --runner-accent: #087fae;
+  --runner-accent-hover: #05688f;
+  --runner-accent-strong: #087fae;
+  --runner-accent-muted: #83bdd5;
+  --runner-accent-bg: rgb(8 127 174 / 10%);
+  --runner-text: #132027;
+  --runner-text-secondary: #52646d;
+  --runner-text-muted: #72828a;
+  --runner-danger: #c42d43;
+  --runner-danger-hover: #9f2033;
+}
+
 * { box-sizing: border-box; }
 html { scrollbar-gutter: stable; }
 body { margin: 0; min-width: 320px; }

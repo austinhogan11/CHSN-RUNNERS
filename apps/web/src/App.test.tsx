@@ -66,6 +66,8 @@ const trendResponse = [
 
 beforeEach(() => {
   window.history.replaceState({}, "", "/");
+  window.localStorage.clear();
+  delete document.documentElement.dataset.theme;
 });
 
 afterEach(() => {
@@ -85,6 +87,9 @@ describe("App", () => {
       if (url.startsWith("/api/trends/mileage")) return response(trendResponse);
       if (url === "/api/strength/maxes") return response({ current: [], history: [] });
       if (url === "/api/strength/exercises") return response([]);
+      if (url.startsWith("/api/strength/weeks/")) {
+        return response({ week_start: "2026-09-28", week_end: "2026-10-04", sessions: [] });
+      }
       throw new Error(`Unexpected URL: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -104,6 +109,29 @@ describe("App", () => {
 
     expect(await screen.findByRole("region", { name: "Workouts" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/");
+  });
+
+  it("toggles and persists the light or dark theme", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.startsWith("/api/weeks/")) return response(weekResponse);
+      if (url.startsWith("/api/trends/mileage")) return response(trendResponse);
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const view = render(<App />);
+    await screen.findByRole("region", { name: "Workouts" });
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to light mode" }));
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(window.localStorage.getItem("runner-theme")).toBe("light");
+
+    view.unmount();
+    render(<App />);
+    await screen.findByRole("region", { name: "Workouts" });
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
   });
 
   it("shows the Runner sign-in experience while signed out", () => {

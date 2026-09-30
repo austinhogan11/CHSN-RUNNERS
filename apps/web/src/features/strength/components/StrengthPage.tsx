@@ -1,21 +1,32 @@
 import { useAuth } from "@clerk/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
-import { formatCalendarDate, formatLocalDate } from "../../../utils/date";
+import { useWeekNavigation } from "../../training/useWeekNavigation";
+import { formatLocalDate, getMondayWeekStart } from "../../../utils/date";
 import {
   createExercise,
+  createStrengthSession,
+  deleteStrengthSession,
   getExercises,
   getStrengthMaxes,
+  getStrengthSession,
+  getStrengthWeek,
   saveStrengthMax,
   strengthErrorMessage,
+  updateStrengthSession,
 } from "../api";
 import type {
   Exercise,
   ExerciseCreate,
-  StrengthMax,
   StrengthMaxCollection,
+  StrengthSessionCreate,
+  StrengthSessionUpdate,
+  StrengthWeek,
 } from "../types";
+import { StrengthWeekDashboard } from "./StrengthWeekDashboard";
+import type { MaxSourceOption } from "./StrengthWeekDashboard";
+import { StrengthMaxHistory } from "./StrengthMaxHistory";
 
 const REQUIRED_MAX_SOURCES = [
   ["bench_press", "Bench Press"],
@@ -27,17 +38,35 @@ const REQUIRED_MAX_SOURCES = [
   ["overhead_press", "Overhead Press"],
 ] as const;
 
-interface MaxSource {
-  key: string;
-  label: string;
-}
-
 export function StrengthPage() {
   const { getToken } = useAuth();
   const [maxes, setMaxes] = useState<StrengthMaxCollection | null>(null);
   const [exercises, setExercises] = useState<Exercise[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const today = useMemo(() => formatLocalDate(new Date()), []);
+  const currentWeekStart = useMemo(() => getMondayWeekStart(today), [today]);
+
+  const loadStrengthWeek = useCallback(async (weekStart: string): Promise<StrengthWeek> => {
+    const token = await getToken();
+    if (!token) throw new Error("No active Clerk session token");
+    return getStrengthWeek(weekStart, token);
+  }, [getToken]);
+  const {
+    week,
+    setWeek,
+    displayedWeekStart,
+    isCurrentWeek,
+    isWeekLoading,
+    weekError,
+    showPreviousWeek,
+    showNextWeek,
+    showCurrentWeek,
+  } = useWeekNavigation({
+    currentWeekStart,
+    loadWeek: loadStrengthWeek,
+    errorMessage: "Unable to load selected strength week.",
+  });
 
   const fetchStrengthData = useCallback(async () => {
     const token = await getToken();
@@ -45,33 +74,36 @@ export function StrengthPage() {
     return Promise.all([
       getStrengthMaxes(token),
       getExercises(token),
+      getStrengthWeek(currentWeekStart, token),
     ]);
-  }, [getToken]);
+  }, [currentWeekStart, getToken]);
 
   const loadStrengthData = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [maxData, exerciseData] = await fetchStrengthData();
+      const [maxData, exerciseData, weekData] = await fetchStrengthData();
       setMaxes(maxData);
       setExercises(exerciseData);
+      setWeek(weekData);
     } catch {
-      setLoadError("Unable to load strength settings.");
+      setLoadError("Unable to load strength dashboard.");
     } finally {
       setIsLoading(false);
     }
-  }, [fetchStrengthData]);
+  }, [fetchStrengthData, setWeek]);
 
   useEffect(() => {
     let isActive = true;
     fetchStrengthData()
-      .then(([maxData, exerciseData]) => {
+      .then(([maxData, exerciseData, weekData]) => {
         if (!isActive) return;
         setMaxes(maxData);
         setExercises(exerciseData);
+        setWeek(weekData);
       })
       .catch(() => {
-        if (isActive) setLoadError("Unable to load strength settings.");
+        if (isActive) setLoadError("Unable to load strength dashboard.");
       })
       .finally(() => {
         if (isActive) setIsLoading(false);
@@ -79,16 +111,16 @@ export function StrengthPage() {
     return () => {
       isActive = false;
     };
-  }, [fetchStrengthData]);
+  }, [fetchStrengthData, setWeek]);
 
   if (isLoading) {
     return <p className="panel page-message" role="status">Loading strength...</p>;
   }
 
-  if (loadError || !maxes || !exercises) {
+  if (loadError || !maxes || !exercises || !week) {
     return (
       <section className="panel page-message strength-load-error" role="alert">
-        <p>{loadError ?? "Unable to load strength settings."}</p>
+        <p>{loadError ?? "Unable to load strength dashboard."}</p>
         <button className="secondary-button" type="button" onClick={() => void loadStrengthData()}>
           Try again
         </button>
@@ -97,6 +129,42 @@ export function StrengthPage() {
   }
 
   const maxSources = buildMaxSources(exercises);
+
+  async function requireToken(): Promise<string> {
+    const token = await getToken();
+    if (!token) throw new Error("No active Clerk session token");
+    return token;
+  }
+
+  async function refreshWeek(token: string): Promise<StrengthWeek> {
+    const refreshed = await getStrengthWeek(displayedWeekStart, token);
+    setWeek(refreshed);
+    return refreshed;
+  }
+
+  async function handleCreateSession(payload: StrengthSessionCreate) {
+    const token = await requireToken();
+    const created = await createStrengthSession(payload, token);
+    await refreshWeek(token);
+    return created;
+  }
+
+  async function handleUpdateSession(sessionId: string, payload: StrengthSessionUpdate) {
+    const token = await requireToken();
+    const updated = await updateStrengthSession(sessionId, payload, token);
+    const refreshed = await refreshWeek(token);
+    return refreshed.sessions.find((session) => session.id === sessionId) ?? updated;
+  }
+
+  async function handleReloadSession(sessionId: string) {
+    return getStrengthSession(sessionId, await requireToken());
+  }
+
+  async function handleDeleteSession(sessionId: string) {
+    const token = await requireToken();
+    await deleteStrengthSession(sessionId, token);
+    await refreshWeek(token);
+  }
 
   return (
     <div className="strength-page">
@@ -115,72 +183,93 @@ export function StrengthPage() {
         getToken={getToken}
         onRefresh={setExercises}
       />
+      <StrengthWeekDashboard
+        week={week}
+        exercises={exercises}
+        maxSources={maxSources}
+        isCurrentWeek={isCurrentWeek}
+        isWeekLoading={isWeekLoading}
+        weekError={weekError}
+        onPreviousWeek={showPreviousWeek}
+        onNextWeek={showNextWeek}
+        onCurrentWeek={showCurrentWeek}
+        onCreate={handleCreateSession}
+        onUpdate={handleUpdateSession}
+        onReload={handleReloadSession}
+        onDelete={handleDeleteSession}
+      />
     </div>
   );
 }
 
 interface MaxesPanelProps {
   maxes: StrengthMaxCollection;
-  maxSources: MaxSource[];
+  maxSources: MaxSourceOption[];
   getToken: () => Promise<string | null>;
   onRefresh: (maxes: StrengthMaxCollection) => void;
 }
 
 function MaxesPanel({ maxes, maxSources, getToken, onRefresh }: MaxesPanelProps) {
+  const [selectedKey, setSelectedKey] = useState(() => defaultMaxSource(maxes, maxSources));
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [value, setValue] = useState("");
-  const [effectiveDate, setEffectiveDate] = useState("");
-  const [isDateVisible, setIsDateVisible] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<{ key: string; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const skipBlur = useRef(false);
+  const saveInFlight = useRef(false);
   const currentByKey = new Map(
     maxes.current.map((item) => [item.exercise_key, item]),
   );
+  const selectedSource = maxSources.find((source) => source.key === selectedKey) ?? maxSources[0];
+  const selectedCurrent = selectedSource ? currentByKey.get(selectedSource.key) : undefined;
+  const selectedHistory = selectedSource
+    ? maxes.history.filter((item) => item.exercise_key === selectedSource.key)
+    : [];
 
-  function beginEdit(source: MaxSource) {
+  function beginEdit(source: MaxSourceOption) {
     const current = currentByKey.get(source.key);
+    skipBlur.current = false;
     setEditingKey(source.key);
     setValue(current ? String(current.value) : "");
-    setEffectiveDate(formatLocalDate(new Date()));
-    setIsDateVisible(false);
     setSaveError(null);
   }
 
   function cancelEdit() {
     setEditingKey(null);
     setSaveError(null);
-    setIsDateVisible(false);
   }
 
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!editingKey) return;
+  async function saveMax(source: MaxSourceOption) {
+    if (saveInFlight.current || editingKey !== source.key) return;
     const numericValue = Number(value);
     if (!value.trim() || !Number.isFinite(numericValue) || numericValue <= 0) {
-      setSaveError("Enter a max greater than 0 pounds.");
+      setEditingKey(null);
+      setSaveError({ key: source.key, message: "Enter a max greater than 0 lb." });
       return;
     }
-    if (!isValidDate(effectiveDate)) {
-      setSaveError("Enter a valid effective date.");
+    if (currentByKey.get(source.key)?.value === numericValue) {
+      setEditingKey(null);
       return;
     }
 
+    saveInFlight.current = true;
     setIsSaving(true);
     setSaveError(null);
     try {
       const token = await getToken();
       if (!token) throw new Error("No active Clerk session token");
       await saveStrengthMax(
-        editingKey,
-        { value: numericValue, effective_date: effectiveDate },
+        source.key,
+        { value: numericValue, effective_date: formatLocalDate(new Date()) },
         token,
       );
       onRefresh(await getStrengthMaxes(token));
-      setEditingKey(null);
     } catch (error) {
-      setSaveError(strengthErrorMessage(error, "max"));
+      setSaveError({ key: source.key, message: strengthErrorMessage(error, "max") });
     } finally {
+      setEditingKey(null);
       setIsSaving(false);
+      saveInFlight.current = false;
     }
   }
 
@@ -188,117 +277,101 @@ function MaxesPanel({ maxes, maxSources, getToken, onRefresh }: MaxesPanelProps)
     <section className="strength-section" aria-labelledby="maxes-heading">
       <div className="section-heading">
         <h3 id="maxes-heading">Maxes</h3>
-        <span className="section-note">Pounds</span>
       </div>
       <div className="strength-max-grid">
         {maxSources.map((source) => {
           const current = currentByKey.get(source.key);
-          const history = maxes.history
-            .filter((item) => item.exercise_key === source.key)
-            .toSorted((left, right) => right.effective_date.localeCompare(left.effective_date));
           const isEditing = editingKey === source.key;
           return (
-            <article className="strength-max-card" key={source.key}>
+            <article
+              className={`strength-max-card${selectedKey === source.key ? " is-selected" : ""}`}
+              key={source.key}
+              onClick={() => setSelectedKey(source.key)}
+            >
               <div className="strength-max-summary">
-                <h4>{source.label}</h4>
+                <h4>
+                  <button
+                    className="strength-max-select"
+                    type="button"
+                    aria-pressed={selectedKey === source.key}
+                    onClick={() => setSelectedKey(source.key)}
+                  >
+                    {source.label}
+                  </button>
+                </h4>
                 <div className="strength-max-control">
                   {isEditing ? (
-                    <form
-                      className="strength-max-inline-form"
-                      onSubmit={handleSave}
-                      noValidate
-                      onKeyDown={(event) => {
-                        if (event.key === "Escape") {
-                          event.preventDefault();
-                          cancelEdit();
-                        } else if (event.key === "Enter") {
-                          event.preventDefault();
-                          event.currentTarget.requestSubmit();
-                        }
-                      }}
-                    >
-                      <div className="strength-max-inline-controls">
-                        <input
-                          aria-label={`${source.label} max`}
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={value}
-                          onChange={(event) => setValue(event.target.value)}
-                          onFocus={(event) => event.currentTarget.select()}
-                          disabled={isSaving}
-                          autoFocus
-                          required
-                        />
-                        <span>lb</span>
-                        <button className="compact-add-button" type="submit" disabled={isSaving}>
-                          {isSaving ? "Saving..." : "Save"}
-                        </button>
-                        <button
-                          className="compact-cancel-button"
-                          type="button"
-                          disabled={isSaving}
-                          onClick={cancelEdit}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          className="strength-max-date-toggle"
-                          type="button"
-                          onClick={() => setIsDateVisible(true)}
-                        >
-                          Date
-                        </button>
-                      </div>
-                      {isDateVisible && (
-                        <label className="strength-max-date">
-                          <span>Effective date</span>
-                          <input
-                            type="date"
-                            value={effectiveDate}
-                            onChange={(event) => setEffectiveDate(event.target.value)}
-                            disabled={isSaving}
-                            required
-                          />
-                        </label>
-                      )}
-                      {saveError && <p className="form-error" role="alert">{saveError}</p>}
-                    </form>
+                    <div className="strength-max-inline-editor">
+                      <input
+                        aria-label={`${source.label} max`}
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={value}
+                        onChange={(event) => setValue(event.target.value)}
+                        onFocus={(event) => event.currentTarget.select()}
+                        onBlur={() => {
+                          if (skipBlur.current) {
+                            skipBlur.current = false;
+                            return;
+                          }
+                          void saveMax(source);
+                        }}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            skipBlur.current = true;
+                            cancelEdit();
+                          } else if (event.key === "Enter") {
+                            event.preventDefault();
+                            event.currentTarget.blur();
+                          }
+                        }}
+                        disabled={isSaving}
+                        autoFocus
+                      />
+                      <span>lb</span>
+                    </div>
                   ) : (
                     <button
                       className={current ? "strength-max-value" : "strength-max-empty"}
                       type="button"
-                      onClick={() => beginEdit(source)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        beginEdit(source);
+                      }}
                     >
                       {current ? `${formatPounds(current.value)} lb` : "Add max"}
                     </button>
                   )}
-                  {history.length > 0 && (
-                    <details className="max-history">
-                      <summary>History</summary>
-                      <ul>
-                        {history.map((item) => (
-                          <li key={item.id}>
-                            <time dateTime={item.effective_date}>{formatHistoryDate(item)}</time>
-                            <strong>{formatPounds(item.value)} lb</strong>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
                 </div>
               </div>
+              {saveError?.key === source.key && (
+                <p className="form-error strength-max-error" role="alert">{saveError.message}</p>
+              )}
             </article>
           );
         })}
       </div>
+      {selectedSource && (
+        <StrengthMaxHistory
+          exerciseKey={selectedSource.key}
+          exerciseLabel={selectedSource.label}
+          current={selectedCurrent}
+          history={selectedHistory}
+        />
+      )}
     </section>
   );
 }
 
 interface ExerciseLibraryProps {
   exercises: Exercise[];
-  maxSources: MaxSource[];
+  maxSources: MaxSourceOption[];
   getToken: () => Promise<string | null>;
   onRefresh: (exercises: Exercise[]) => void;
 }
@@ -472,7 +545,7 @@ function ExerciseLibrary({
   );
 }
 
-function buildMaxSources(exercises: Exercise[]): MaxSource[] {
+function buildMaxSources(exercises: Exercise[]): MaxSourceOption[] {
   const labels = new Map<string, string>(REQUIRED_MAX_SOURCES);
   const exerciseLabels = new Map(exercises.map((exercise) => [exercise.id, exercise.name]));
   for (const exercise of exercises) {
@@ -497,14 +570,19 @@ function formatPounds(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function formatHistoryDate(item: StrengthMax): string {
-  return formatCalendarDate(item.effective_date, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function isValidDate(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00`));
+function defaultMaxSource(
+  maxes: StrengthMaxCollection,
+  maxSources: MaxSourceOption[],
+): string {
+  const keysWithData = new Set([
+    ...maxes.current.map((item) => item.exercise_key),
+    ...maxes.history.map((item) => item.exercise_key),
+  ]);
+  const bench = maxSources.find((source) => (
+    source.key === "bench_press" && keysWithData.has(source.key)
+  ));
+  return bench?.key
+    ?? maxSources.find((source) => keysWithData.has(source.key))?.key
+    ?? maxSources[0]?.key
+    ?? "";
 }

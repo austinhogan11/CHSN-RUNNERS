@@ -2,9 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createExercise,
+  createStrengthSession,
+  deleteStrengthSession,
   getExercises,
   getStrengthMaxes,
+  getStrengthSession,
+  getStrengthWeek,
   saveStrengthMax,
+  updateStrengthSession,
 } from "./api";
 
 afterEach(() => {
@@ -80,6 +85,67 @@ describe("strength API", () => {
         category: "barbell",
         default_max_source: "bench_press",
       }),
+    });
+  });
+
+  it("uses authenticated strength week and session routes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getStrengthWeek("2026-09-21", "clerk-token");
+    await getStrengthSession("session/1", "clerk-token");
+
+    const options = { headers: { Authorization: "Bearer clerk-token" } };
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/strength/weeks/2026-09-21", options);
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/strength/sessions/session%2F1", options);
+  });
+
+  it("creates, updates, and deletes a session with explicit JSON payloads", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: "session-1" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const createPayload = {
+      date: "2026-09-23",
+      title: "Upper Body",
+      notes: null,
+      exercise_blocks: [],
+    };
+    const updatePayload = {
+      title: "Upper Strength",
+      notes: "Build steadily",
+      exercise_blocks: [],
+    };
+
+    await createStrengthSession(createPayload, "clerk-token");
+    await updateStrengthSession("session-1", updatePayload, "clerk-token");
+    await deleteStrengthSession("session-1", "clerk-token");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/strength/sessions", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer clerk-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(createPayload),
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/strength/sessions/session-1", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer clerk-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updatePayload),
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/strength/sessions/session-1", {
+      method: "DELETE",
+      headers: { Authorization: "Bearer clerk-token" },
     });
   });
 });

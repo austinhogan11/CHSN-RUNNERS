@@ -63,6 +63,12 @@ const exercises = [
   },
 ];
 
+const emptyWeek = {
+  week_start: "2026-09-28",
+  week_end: "2026-10-04",
+  sessions: [],
+};
+
 afterEach(() => {
   clerk.getToken.mockReset();
   clerk.getToken.mockResolvedValue("session-token");
@@ -80,25 +86,66 @@ describe("StrengthPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Loading strength...");
   });
 
+  it("loads Strength weeks with shared navigation while preserving the selected weekday", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-28T12:00:00"));
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === "/api/strength/maxes") return response(maxes);
+      if (url === "/api/strength/exercises") return response(exercises);
+      if (url === "/api/strength/weeks/2026-09-28") return response(emptyWeek);
+      if (url === "/api/strength/weeks/2026-09-21") {
+        return response({ week_start: "2026-09-21", week_end: "2026-09-27", sessions: [] });
+      }
+      if (url === "/api/strength/weeks/2026-10-05") throw new Error("week failed");
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<StrengthPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Select Thursday, Oct 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+    expect(await screen.findByRole("button", { name: /Select Thursday, Sep 24/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    expect(await screen.findByRole("button", { name: /Select Thursday, Oct 1/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to load selected strength week.",
+    );
+    expect(screen.getByRole("button", { name: /Select Thursday, Oct 1/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   it("renders maxes and expands or collapses the exercise library disclosure", async () => {
     vi.stubGlobal("fetch", strengthFetch());
 
     render(<StrengthPage />);
 
     const maxesRegion = await screen.findByRole("region", { name: "Maxes" });
-    const benchCard = within(maxesRegion)
-      .getByRole("heading", { name: "Bench Press" })
-      .closest("article");
-    expect(within(benchCard!).getByRole("button", { name: "265 lb" })).toBeInTheDocument();
+    const library = screen.getByRole("region", { name: "Exercise Library" });
+    const weeklyTraining = screen.getByRole("region", { name: "Weekly Training" });
+    expect(maxesRegion.compareDocumentPosition(library) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(library.compareDocumentPosition(weeklyTraining) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText("Pounds")).not.toBeInTheDocument();
+    const benchSelect = within(maxesRegion).getByRole("button", { name: "Bench Press" });
+    const benchCard = benchSelect.closest("article")!;
+    expect(benchSelect).toHaveAttribute("aria-pressed", "true");
+    expect(within(benchCard).getByRole("button", { name: "265 lb" })).toBeInTheDocument();
     expect(within(maxesRegion).getAllByRole("button", { name: "Add max" })).toHaveLength(6);
     expect(within(maxesRegion).queryByText(/kg/i)).not.toBeInTheDocument();
+    expect(within(maxesRegion).queryByText("History")).not.toBeInTheDocument();
+    expect(within(maxesRegion).getByRole("group", { name: "Bench Press max history" })).toBeInTheDocument();
+    expect(within(maxesRegion).getByRole("button", { name: "Year to date" })).toHaveAttribute("aria-pressed", "true");
 
-    fireEvent.click(within(maxesRegion).getByText("History"));
-    expect(within(maxesRegion).getByText("Sep 1, 2026")).toBeInTheDocument();
-    expect(within(maxesRegion).getByText("Aug 1, 2026")).toBeInTheDocument();
-    expect(within(maxesRegion).getByText("255 lb")).toBeInTheDocument();
-
-    const library = screen.getByRole("region", { name: "Exercise Library" });
     const disclosure = within(library).getByRole("button", {
       name: "Exercise Library, 3 exercises",
     });
@@ -119,7 +166,158 @@ describe("StrengthPage", () => {
     expect(within(library).queryByText("Farmers Walk")).not.toBeInTheDocument();
   });
 
-  it("saves a max, refetches authoritative data, and retains history", async () => {
+  it("selects one shared max chart and uses true YTD, 1Y, or All calendar domains", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-29T12:00:00"));
+    const historyMaxes = {
+      current: [
+        maxes.current[0],
+        { ...maxes.current[0], id: "deadlift-current", exercise_key: "deadlift", value: 350 },
+      ],
+      history: [
+        { ...maxes.history[0], id: "bench-newest", value: 265, effective_date: "2026-09-01" },
+        { ...maxes.history[0], id: "deadlift-only", exercise_key: "deadlift", value: 350, effective_date: "2026-09-28" },
+        { ...maxes.history[0], id: "bench-oldest", value: 200, effective_date: "2025-01-01" },
+        { ...maxes.history[0], id: "bench-recent", value: 250, effective_date: "2026-07-10" },
+        { ...maxes.history[0], id: "bench-year", value: 220, effective_date: "2025-10-01" },
+        { ...maxes.history[0], id: "bench-summer", value: 240, effective_date: "2026-06-01" },
+      ],
+    };
+    vi.stubGlobal("fetch", strengthFetch(historyMaxes));
+
+    render(<StrengthPage />);
+
+    const maxesRegion = await screen.findByRole("region", { name: "Maxes" });
+    const benchChart = within(maxesRegion).getByRole("group", { name: "Bench Press max history" });
+    expect(benchChart).toHaveAttribute("data-domain-start", "2026-01-01");
+    expect(benchChart).toHaveAttribute("data-domain-end", "2026-09-29");
+    expect(within(benchChart).getAllByRole("img").map((point) => point.getAttribute("aria-label"))).toEqual([
+      "Jun 1: 240 pounds",
+      "Jul 10: 250 pounds",
+      "Sep 1: 265 pounds",
+    ]);
+    fireEvent.focus(within(benchChart).getByRole("img", { name: "Jul 10: 250 pounds" }));
+    expect(within(benchChart).getByRole("tooltip", { name: "Jul 10, 250 lb" })).toBeInTheDocument();
+    fireEvent.blur(within(benchChart).getByRole("img", { name: "Jul 10: 250 pounds" }));
+
+    fireEvent.click(within(maxesRegion).getByRole("button", { name: "Trailing year" }));
+    expect(benchChart).toHaveAttribute("data-domain-start", "2025-09-29");
+    expect(benchChart).toHaveAttribute("data-domain-end", "2026-09-29");
+    expect(within(benchChart).getAllByRole("img").map((point) => point.getAttribute("aria-label"))).toEqual([
+      "Oct 1: 220 pounds",
+      "Jun 1: 240 pounds",
+      "Jul 10: 250 pounds",
+      "Sep 1: 265 pounds",
+    ]);
+
+    fireEvent.click(within(maxesRegion).getByRole("button", { name: "All history" }));
+    expect(benchChart).toHaveAttribute("data-domain-start", "2025-01-01");
+    expect(benchChart).toHaveAttribute("data-domain-end", "2026-09-29");
+    expect(within(benchChart).getAllByRole("img").map((point) => point.getAttribute("aria-label"))).toEqual([
+      "Jan 1: 200 pounds",
+      "Oct 1: 220 pounds",
+      "Jun 1: 240 pounds",
+      "Jul 10: 250 pounds",
+      "Sep 1: 265 pounds",
+    ]);
+
+    fireEvent.click(within(maxesRegion).getByRole("button", { name: "Deadlift" }));
+    const deadliftChart = within(maxesRegion).getByRole("group", { name: "Deadlift max history" });
+    expect(within(deadliftChart).getAllByRole("img")).toHaveLength(1);
+    const recentPoint = within(deadliftChart).getByRole("img", { name: "Sep 28: 350 pounds" });
+    expect(recentPoint).toBeInTheDocument();
+    expect(deadliftChart).toHaveAttribute("data-domain-start", "2026-01-01");
+    expect(deadliftChart).toHaveAttribute("data-domain-end", "2026-09-29");
+    expect(Number(recentPoint.querySelector(".chart-dot")?.getAttribute("cx"))).toBeGreaterThan(900);
+    expect(deadliftChart.querySelector(".chart-line")).toHaveAttribute(
+      "points",
+      expect.stringMatching(/^44,164 /),
+    );
+    expect(deadliftChart.querySelector("polygon")).toHaveAttribute("fill", expect.stringMatching(/^url\(/));
+    expect(within(maxesRegion).queryByRole("img", { name: /265 pounds/ })).not.toBeInTheDocument();
+
+    fireEvent.click(within(maxesRegion).getByRole("button", { name: "265 lb" }));
+    expect(within(maxesRegion).getByRole("spinbutton", { name: "Bench Press max" })).toBeInTheDocument();
+    expect(within(maxesRegion).getByRole("group", { name: "Deadlift max history" })).toBeInTheDocument();
+    fireEvent.keyDown(within(maxesRegion).getByRole("spinbutton", { name: "Bench Press max" }), { key: "Escape" });
+
+    fireEvent.click(within(maxesRegion).getByRole("button", { name: "Back Squat" }));
+    expect(within(maxesRegion).getByText("No max history in this range.")).toBeInTheDocument();
+    expect(within(maxesRegion).queryByRole("group", { name: "Back Squat max history" })).not.toBeInTheDocument();
+  });
+
+  it("creates and deletes a same-day session through authoritative week refreshes", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-23T12:00:00"));
+    const existingSession = {
+      id: "session-1",
+      date: "2026-09-23",
+      title: "Upper Body",
+      notes: null,
+      exercise_blocks: [],
+    };
+    const secondSession = { ...existingSession, id: "session-2", title: "Accessories" };
+    const createdSession = { ...existingSession, id: "session-3", title: "Strength Session" };
+    let weekGetCount = 0;
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url === "/api/strength/maxes") return response(maxes);
+      if (url === "/api/strength/exercises") return response(exercises);
+      if (url.startsWith("/api/strength/weeks/")) {
+        weekGetCount += 1;
+        return response({
+          week_start: "2026-09-21",
+          week_end: "2026-09-27",
+          sessions: weekGetCount === 2
+            ? [existingSession, secondSession, createdSession]
+            : [existingSession, secondSession],
+        });
+      }
+      if (url === "/api/strength/sessions" && options?.method === "POST") {
+        return response(createdSession, 201);
+      }
+      if (url === "/api/strength/sessions/session-3" && options?.method === "DELETE") {
+        return response({}, 204);
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<StrengthPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "+ Add session" }));
+
+    const sessionSelector = within(await screen.findByLabelText("Strength sessions"));
+    expect(sessionSelector.getByRole("button", { name: /Strength Session/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/strength/sessions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          date: "2026-09-23",
+          title: "Strength Session",
+          notes: null,
+          exercise_blocks: [],
+        }),
+      },
+    );
+    expect(weekGetCount).toBe(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(weekGetCount).toBe(3));
+    expect(sessionSelector.queryByRole("button", { name: /Strength Session/ })).not.toBeInTheDocument();
+    expect(sessionSelector.getByRole("button", { name: /Upper Body/ })).toBeInTheDocument();
+    expect(sessionSelector.getByRole("button", { name: /Accessories/ })).toBeInTheDocument();
+  });
+
+  it("saves a max with Enter, refetches authoritative data, and refreshes the chart", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-09-28T12:00:00"));
     const refreshed = {
@@ -135,6 +333,7 @@ describe("StrengthPage", () => {
         maxGetCount += 1;
         return response(maxGetCount === 1 ? maxes : refreshed);
       }
+      if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/exercises") return response(exercises);
       if (url === "/api/strength/maxes/bench_press") return response(refreshed.current[0]);
       throw new Error(`Unexpected URL: ${url}`);
@@ -143,7 +342,7 @@ describe("StrengthPage", () => {
 
     render(<StrengthPage />);
 
-    const benchCard = (await screen.findByRole("heading", { name: "Bench Press" })).closest("article")!;
+    const benchCard = await findMaxCard("Bench Press");
     fireEvent.click(within(benchCard).getByRole("button", { name: "265 lb" }));
     fireEvent.change(within(benchCard).getByRole("spinbutton", { name: "Bench Press max" }), {
       target: { value: "285" },
@@ -163,8 +362,49 @@ describe("StrengthPage", () => {
       },
       body: JSON.stringify({ value: 285, effective_date: "2026-09-28" }),
     });
-    fireEvent.click(within(benchCard).getByText("History"));
-    expect(within(benchCard).getByText("265 lb")).toBeInTheDocument();
+    const chart = screen.getByRole("group", { name: "Bench Press max history" });
+    expect(within(chart).getByRole("img", { name: "Sep 28: 285 pounds" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Date" })).not.toBeInTheDocument();
+  });
+
+  it("saves a valid max on blur", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-28T12:00:00"));
+    const refreshed = {
+      current: [{ ...maxes.current[0], id: "bench-blur", value: 275, effective_date: "2026-09-28" }],
+      history: [
+        ...maxes.history,
+        { ...maxes.current[0], id: "bench-blur", value: 275, effective_date: "2026-09-28" },
+      ],
+    };
+    let maxGetCount = 0;
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url === "/api/strength/maxes" && !options?.method) {
+        maxGetCount += 1;
+        return response(maxGetCount === 1 ? maxes : refreshed);
+      }
+      if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
+      if (url === "/api/strength/exercises") return response(exercises);
+      if (url === "/api/strength/maxes/bench_press") return response(refreshed.current[0]);
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<StrengthPage />);
+
+    const benchCard = await findMaxCard("Bench Press");
+    fireEvent.click(within(benchCard).getByRole("button", { name: "265 lb" }));
+    const input = within(benchCard).getByRole("spinbutton", { name: "Bench Press max" });
+    fireEvent.change(input, { target: { value: "275" } });
+    fireEvent.blur(input);
+
+    expect(await within(benchCard).findByRole("button", { name: "275 lb" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/strength/maxes/bench_press",
+      expect.objectContaining({ method: "PUT" }),
+    );
   });
 
   it("cancels an inline max edit with Escape", async () => {
@@ -172,7 +412,7 @@ describe("StrengthPage", () => {
 
     render(<StrengthPage />);
 
-    const benchCard = (await screen.findByRole("heading", { name: "Bench Press" })).closest("article")!;
+    const benchCard = await findMaxCard("Bench Press");
     fireEvent.click(within(benchCard).getByRole("button", { name: "265 lb" }));
     const input = within(benchCard).getByRole("spinbutton", { name: "Bench Press max" });
     expect(input).toHaveFocus();
@@ -183,21 +423,22 @@ describe("StrengthPage", () => {
     expect(within(benchCard).getByRole("button", { name: "265 lb" })).toBeInTheDocument();
   });
 
-  it("rejects a non-positive max before calling the API", async () => {
+  it("reverts an invalid max on blur without calling the API", async () => {
     const fetchMock = strengthFetch();
     vi.stubGlobal("fetch", fetchMock);
 
     render(<StrengthPage />);
 
-    const benchCard = (await screen.findByRole("heading", { name: "Bench Press" })).closest("article")!;
+    const benchCard = await findMaxCard("Bench Press");
     fireEvent.click(within(benchCard).getByRole("button", { name: "265 lb" }));
     const input = within(benchCard).getByRole("spinbutton", { name: "Bench Press max" });
     fireEvent.change(input, { target: { value: "0" } });
-    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.blur(input);
 
     expect(await within(benchCard).findByRole("alert")).toHaveTextContent(
-      "Enter a max greater than 0 pounds.",
+      "Enter a max greater than 0 lb.",
     );
+    expect(within(benchCard).getByRole("button", { name: "265 lb" })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalledWith(
       "/api/strength/maxes/bench_press",
       expect.anything(),
@@ -209,6 +450,7 @@ describe("StrengthPage", () => {
       if (url === "/api/strength/maxes/bench_press" && options?.method === "PUT") {
         return response({}, 500);
       }
+      if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/maxes") return response(maxes);
       if (url === "/api/strength/exercises") return response(exercises);
       throw new Error(`Unexpected URL: ${url}`);
@@ -217,12 +459,13 @@ describe("StrengthPage", () => {
 
     render(<StrengthPage />);
 
-    const benchCard = (await screen.findByRole("heading", { name: "Bench Press" })).closest("article")!;
+    const benchCard = await findMaxCard("Bench Press");
     fireEvent.click(within(benchCard).getByRole("button", { name: "265 lb" }));
-    fireEvent.click(within(benchCard).getByRole("button", { name: "Save" }));
+    const input = within(benchCard).getByRole("spinbutton", { name: "Bench Press max" });
+    fireEvent.change(input, { target: { value: "275" } });
+    fireEvent.blur(input);
 
     expect(await within(benchCard).findByRole("alert")).toHaveTextContent("Unable to save max");
-    fireEvent.click(within(benchCard).getByRole("button", { name: "Cancel" }));
     expect(within(benchCard).getByRole("button", { name: "265 lb" })).toBeInTheDocument();
   });
 
@@ -237,6 +480,7 @@ describe("StrengthPage", () => {
     let exerciseGetCount = 0;
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url === "/api/strength/exercises" && options?.method === "POST") return response(custom, 201);
+      if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/maxes") return response(maxes);
       if (url === "/api/strength/exercises") {
         exerciseGetCount += 1;
@@ -287,6 +531,7 @@ describe("StrengthPage", () => {
   it("shows custom exercise API errors without adding the exercise", async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url === "/api/strength/maxes") return response(maxes);
+      if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/exercises" && options?.method === "POST") return response({}, 500);
       if (url === "/api/strength/exercises") return response(exercises);
       throw new Error(`Unexpected URL: ${url}`);
@@ -311,12 +556,18 @@ describe("StrengthPage", () => {
   });
 });
 
-function strengthFetch() {
+function strengthFetch(maxData = maxes) {
   return vi.fn(async (url: string) => {
-    if (url === "/api/strength/maxes") return response(maxes);
+    if (url === "/api/strength/maxes") return response(maxData);
     if (url === "/api/strength/exercises") return response(exercises);
+    if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
     throw new Error(`Unexpected URL: ${url}`);
   });
+}
+
+async function findMaxCard(name: string): Promise<HTMLElement> {
+  const selector = await screen.findByRole("button", { name });
+  return selector.closest("article")!;
 }
 
 function response(body: unknown, status = 200) {

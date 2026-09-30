@@ -24,22 +24,40 @@ import { useWeekNavigation } from "./features/training/useWeekNavigation";
 import { addCalendarDays, formatLocalDate, getMondayWeekStart } from "./utils/date";
 import "./App.css";
 
+type TrainingMode = "running" | "strength";
+type Theme = "light" | "dark";
+
+const THEME_STORAGE_KEY = "runner-theme";
+
 function App() {
+  const [theme, setTheme] = useState<Theme>(initialTheme);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
   return (
     <>
       <Show when="signed-out">
         <SignInExperience />
       </Show>
       <Show when="signed-in">
-        <AuthenticatedApp />
+        <AuthenticatedApp
+          theme={theme}
+          onToggleTheme={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+        />
       </Show>
     </>
   );
 }
 
-type TrainingMode = "running" | "strength";
+interface AuthenticatedAppProps {
+  theme: Theme;
+  onToggleTheme: () => void;
+}
 
-function AuthenticatedApp() {
+function AuthenticatedApp({ theme, onToggleTheme }: AuthenticatedAppProps) {
   const [mode, setMode] = useState<TrainingMode>(() => modeForPath(window.location.pathname));
 
   useEffect(() => {
@@ -57,7 +75,12 @@ function AuthenticatedApp() {
 
   return (
     <main className="dashboard">
-      <DashboardHeader mode={mode} onNavigate={navigate} />
+      <DashboardHeader
+        mode={mode}
+        theme={theme}
+        onNavigate={navigate}
+        onToggleTheme={onToggleTheme}
+      />
       {mode === "strength" ? <StrengthPage /> : <Dashboard />}
     </main>
   );
@@ -272,10 +295,12 @@ function updateWeek(
 
 interface DashboardHeaderProps {
   mode: TrainingMode;
+  theme: Theme;
   onNavigate: (mode: TrainingMode) => void;
+  onToggleTheme: () => void;
 }
 
-function DashboardHeader({ mode, onNavigate }: DashboardHeaderProps) {
+function DashboardHeader({ mode, theme, onNavigate, onToggleTheme }: DashboardHeaderProps) {
   return (
     <header className="dashboard-header">
       <div className="brand">
@@ -305,6 +330,14 @@ function DashboardHeader({ mode, onNavigate }: DashboardHeaderProps) {
         </a>
       </nav>
       <div className="account-control" aria-label="Runner account">
+        <button
+          className="theme-toggle"
+          type="button"
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          onClick={onToggleTheme}
+        >
+          <span aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span>
+        </button>
         <UserButton />
       </div>
     </header>
@@ -313,6 +346,12 @@ function DashboardHeader({ mode, onNavigate }: DashboardHeaderProps) {
 
 function modeForPath(pathname: string): TrainingMode {
   return pathname === "/strength" ? "strength" : "running";
+}
+
+function initialTheme(): Theme {
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
 }
 
 export default App;
