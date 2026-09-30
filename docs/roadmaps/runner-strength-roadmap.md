@@ -8,9 +8,9 @@ Use the PPSA Sport Strength plan as a representative validation case because it 
 ---
 
 ## Product Principles
-- [ ] Running and Strength are separate but parallel training views
-- [ ] Keep the existing Running dashboard intact
-- [ ] Add an easy Running / Strength switch
+- [x] Running and Strength are separate but parallel training views
+- [x] Keep the existing Running dashboard intact
+- [x] Add an easy Running / Strength switch
 - [ ] Separate planned prescription from actual execution
 - [ ] Make workouts highly reusable through copy/move/template operations
 - [ ] Never copy completed execution data into a duplicated session by default
@@ -161,23 +161,23 @@ Suggested fields:
 ## Goal
 Let the athlete define the source data for prescriptions.
 
-- [ ] Add Strength Settings / Maxes screen
-- [ ] Bench Press max
-- [ ] Back Squat max
-- [ ] Deadlift max
-- [ ] Power Clean max
-- [ ] Front Squat max
-- [ ] Snatch max
+- [x] Add Strength Settings / Maxes screen
+- [x] Bench Press max
+- [x] Back Squat max
+- [x] Deadlift max
+- [x] Power Clean max
+- [x] Front Squat max
+- [x] Snatch max
 - [ ] Custom max source
-- [ ] Built-in exercise library
-- [ ] Custom exercises
-- [ ] Exercise can reference a default max source
-- [ ] Max updates preserve historical values
+- [x] Built-in exercise library
+- [x] Custom exercises
+- [x] Exercise can reference a default max source
+- [x] Max updates preserve historical values
 
 ### Acceptance Criteria
-- [ ] All required maxes are configurable
-- [ ] Exercises reference the correct max source
-- [ ] Historical workouts remain stable when maxes change
+- [x] All required maxes are configurable
+- [x] Exercises reference the correct max source
+- [x] Historical workouts remain stable when maxes change
 
 ---
 
@@ -185,26 +185,40 @@ Let the athlete define the source data for prescriptions.
 ## Goal
 Build the Strength equivalent of the Running weekly dashboard.
 
-- [ ] Add Running / Strength top-level switch
-- [ ] Preserve current Running dashboard
-- [ ] Add Strength weekly navigation
-- [ ] Monday-Sunday selector
-- [ ] Selected-day strength session
-- [ ] Add new strength session
-- [ ] Add exercise
-- [ ] Remove exercise
-- [ ] Edit title
+- [x] Add Running / Strength top-level switch
+- [x] Preserve current Running dashboard
+- [x] Add Strength weekly navigation
+- [x] Monday-Sunday selector
+- [x] Selected-day strength session
+- [x] Add new strength session
+- [x] Add exercise
+- [x] Remove exercise
+- [x] Edit title
 - [ ] Reorder exercises
-- [ ] Add/delete sets
-- [ ] Set target reps
-- [ ] Set target percentage
-- [ ] Set fixed target weight
-- [ ] Save/reload session
+- [x] Add/delete sets
+- [x] Set target reps
+- [x] Set target percentage
+- [x] Set fixed target weight
+- [x] Save/reload session
 
 ### Acceptance Criteria
-- [ ] Complete daily strength workout can be authored in the web UI
-- [ ] Reload preserves the saved session
-- [ ] Running dashboard remains unchanged
+- [x] Complete daily strength workout can be authored in the web UI
+- [x] Reload preserves the saved session
+- [x] Running dashboard remains unchanged
+
+### Milestone 3 implementation notes
+- Strength reuses the same week navigation, weekday-index selection, and
+  Monday-Sunday selector mechanics as Running while keeping Strength sessions
+  and Running workouts as separate domain models.
+- A selected day may contain multiple independently editable sessions. Creates,
+  updates, and deletes refetch the displayed week so the UI reconciles to the
+  backend response instead of relying on optimistic persistence.
+- The editor replaces the complete ordered exercise-block collection on save.
+  It preserves existing nested IDs, appends new blocks and sets, and normalizes
+  order values after removals. Manual reordering remains deferred.
+- Percentage and max-source values can be authored together, but resolving a
+  percentage into a target weight remains Milestone 4 work. Actual-set entry
+  remains Milestone 5 work.
 
 ---
 

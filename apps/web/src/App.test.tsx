@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 
@@ -64,6 +64,12 @@ const trendResponse = [
   },
 ];
 
+beforeEach(() => {
+  window.history.replaceState({}, "", "/");
+  window.localStorage.clear();
+  delete document.documentElement.dataset.theme;
+});
+
 afterEach(() => {
   clerk.signedIn = true;
   clerk.getToken.mockReset();
@@ -75,6 +81,59 @@ afterEach(() => {
 });
 
 describe("App", () => {
+  it("switches between the Running and Strength routes", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.startsWith("/api/weeks/")) return response(weekResponse);
+      if (url.startsWith("/api/trends/mileage")) return response(trendResponse);
+      if (url === "/api/strength/maxes") return response({ current: [], history: [] });
+      if (url === "/api/strength/exercises") return response([]);
+      if (url.startsWith("/api/strength/weeks/")) {
+        return response({ week_start: "2026-09-28", week_end: "2026-10-04", sessions: [] });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByRole("region", { name: "Workouts" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Running" })).toHaveAttribute("aria-current", "page");
+
+    fireEvent.click(screen.getByRole("link", { name: "Strength" }));
+
+    expect(await screen.findByRole("heading", { name: "Strength", level: 2 })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/strength");
+    expect(screen.getByRole("link", { name: "Strength" })).toHaveAttribute("aria-current", "page");
+
+    fireEvent.click(screen.getByRole("link", { name: "Running" }));
+
+    expect(await screen.findByRole("region", { name: "Workouts" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
+  });
+
+  it("toggles and persists the light or dark theme", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.startsWith("/api/weeks/")) return response(weekResponse);
+      if (url.startsWith("/api/trends/mileage")) return response(trendResponse);
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const view = render(<App />);
+    await screen.findByRole("region", { name: "Workouts" });
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to light mode" }));
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(window.localStorage.getItem("runner-theme")).toBe("light");
+
+    view.unmount();
+    render(<App />);
+    await screen.findByRole("region", { name: "Workouts" });
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
+  });
+
   it("shows the Runner sign-in experience while signed out", () => {
     clerk.signedIn = false;
     const fetchMock = vi.fn();
@@ -712,3 +771,11 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 });
+
+function response(body: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  };
+}

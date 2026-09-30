@@ -10,7 +10,10 @@ import {
   hasActualExecution,
   parseDurationInput,
 } from "../utils";
-import { formatCalendarDate, formatLocalDate, formatWeekRange, getWeekDates } from "../../../utils/date";
+import { WeekDaySelector } from "../../training/components/WeekDaySelector";
+import { WeekNavigation } from "../../training/components/WeekNavigation";
+import { useWeekdaySelection } from "../../training/useWeekdaySelection";
+import { formatCalendarDate, formatLocalDate } from "../../../utils/date";
 import { AddSessionForm } from "./WorkoutForms";
 import { InlineInputField } from "./InlineWorkoutFields";
 
@@ -44,11 +47,12 @@ export function WorkoutList({
   onDelete,
 }: WorkoutListProps) {
   const today = formatLocalDate(new Date());
-  const weekDates = getWeekDates(weekStart);
-  const [selectedWeekdayIndex, setSelectedWeekdayIndex] = useState(() => (
-    weekDates.includes(today) ? weekDates.indexOf(today) : 0
-  ));
-  const selectedDay = weekDates[selectedWeekdayIndex];
+  const {
+    weekDates,
+    selectedDay,
+    selectedWeekdayIndex,
+    selectWeekday,
+  } = useWeekdaySelection(weekStart, today);
   const workoutsByDate = new Map<string, Workout[]>();
   for (const workout of workouts) {
     const dayWorkouts = workoutsByDate.get(workout.date) ?? [];
@@ -71,46 +75,31 @@ export function WorkoutList({
       </div>
 
       <div className="workout-week-toolbar">
-        <div className="workout-week-navigation">
-          <div className="workout-week-controls">
-            <button className="navigation-button" type="button" aria-label="Previous week" disabled={isWeekLoading} onClick={onPreviousWeek}>‹</button>
-            <strong>{formatWeekRange(weekStart)}</strong>
-            <button className="navigation-button" type="button" aria-label="Next week" disabled={isWeekLoading} onClick={onNextWeek}>›</button>
-          </div>
-          <div className="week-navigation-feedback" aria-live="polite">
-            {!isCurrentWeek && <button className="current-week-button" type="button" disabled={isWeekLoading} onClick={onCurrentWeek}>Current week</button>}
-            {isWeekLoading && <span className="sr-only" role="status">Updating week</span>}
-            {!isWeekLoading && weekError && <span className="navigation-status error" role="alert">{weekError}</span>}
-          </div>
-        </div>
+        <WeekNavigation
+          weekStart={weekStart}
+          isCurrentWeek={isCurrentWeek}
+          isLoading={isWeekLoading}
+          error={weekError}
+          onPrevious={onPreviousWeek}
+          onNext={onNextWeek}
+          onCurrent={onCurrentWeek}
+        />
         <div className="weekly-mileage">
           <span>Weekly mileage</span>
           <strong>{formatDistance(weeklyMileage)}</strong>
         </div>
       </div>
 
-      <ul className="week-overview" aria-label="Week overview">
-        {weekDates.map((day, weekdayIndex) => {
+      <WeekDaySelector
+        weekDates={weekDates}
+        selectedWeekdayIndex={selectedWeekdayIndex}
+        today={today}
+        onSelect={selectWeekday}
+        renderSummary={(day) => {
           const dayWorkouts = workoutsByDate.get(day) ?? [];
-          const isToday = day === today;
-          return (
-            <li key={day}>
-              <button
-                className={`overview-day${isToday ? " is-today" : ""}`}
-                type="button"
-                aria-label={`Select ${formatCalendarDate(day, { weekday: "long", month: "short", day: "numeric" })}${isToday ? ", today" : ""}`}
-                aria-pressed={selectedDay === day}
-                onClick={() => setSelectedWeekdayIndex(weekdayIndex)}
-              >
-                <span className="overview-weekday">{formatCalendarDate(day, { weekday: "short" })}</span>
-                <strong>{formatCalendarDate(day, { month: "short", day: "numeric" })}</strong>
-                <span className="overview-mileage">{dayWorkouts.length === 0 ? "—" : formatDistance(dayMileage(dayWorkouts))}</span>
-                {isToday && <span className="today-label">Today</span>}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+          return dayWorkouts.length === 0 ? "—" : formatDistance(dayMileage(dayWorkouts));
+        }}
+      />
 
       <section className="selected-day-panel panel" aria-labelledby="selected-day-heading">
         <div className="selected-day-header">
