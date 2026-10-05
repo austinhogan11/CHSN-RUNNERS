@@ -72,11 +72,76 @@ export interface StrengthSession {
   title: string;
   notes: string | null;
   exercise_blocks: ExerciseBlock[];
+  program?: StrengthProgramProvenance | null;
+}
+
+export interface StrengthProgramProvenance {
+  program_id: string;
+  program_name: string;
+  instance_id: string;
+  day_number: number;
+  total_days: number;
+  start_date: string;
+  days_per_week: number;
+  selected_weekdays: number[];
 }
 
 export interface StrengthWeek {
   week_start: string;
   week_end: string;
+  sessions: StrengthSession[];
+}
+
+export type ProgramPlannedSet = Omit<
+  PlannedSet,
+  "max_value_at_creation" | "target_weight"
+> & {
+  target_weight: number | null;
+};
+
+export interface ProgramExerciseBlock {
+  id: string;
+  exercise_id: string;
+  order: number;
+  group_id: string | null;
+  label: string | null;
+  planned_sets: ProgramPlannedSet[];
+}
+
+export interface StrengthProgramDay {
+  id: string;
+  day_number: number;
+  name: string;
+  exercise_blocks: ProgramExerciseBlock[];
+}
+
+export interface StrengthProgram {
+  id: string;
+  name: string;
+  days: StrengthProgramDay[];
+}
+
+export interface StrengthProgramSchedule {
+  start_date: string;
+  days_per_week: number;
+  selected_weekdays: number[];
+  allow_duplicate?: boolean;
+}
+
+export interface StrengthProgramInstanceSummary {
+  program_id: string;
+  program_name: string;
+  instance_id: string;
+  total_workouts: number;
+  scheduled_workouts: number;
+  completed_workouts: number;
+  start_date: string;
+  days_per_week: number;
+  selected_weekdays: number[];
+}
+
+export interface StrengthProgramScheduleResult {
+  instance: StrengthProgramInstanceSummary;
   sessions: StrengthSession[];
 }
 

@@ -87,6 +87,8 @@ describe("App", () => {
       if (url.startsWith("/api/trends/mileage")) return response(trendResponse);
       if (url === "/api/strength/maxes") return response({ current: [], history: [] });
       if (url === "/api/strength/exercises") return response([]);
+      if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
       if (url.startsWith("/api/strength/weeks/")) {
         return response({ week_start: "2026-09-28", week_end: "2026-10-04", sessions: [] });
       }

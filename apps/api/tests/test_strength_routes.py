@@ -8,7 +8,12 @@ from fastapi.testclient import TestClient
 from runner_api.auth import CurrentUser, get_current_user
 from runner_api.dependencies import get_strength_repositories
 from runner_api.main import app
-from runner_api.models.strength import Exercise, StrengthSession, StrengthTemplate
+from runner_api.models.strength import (
+    Exercise,
+    StrengthProgram,
+    StrengthSession,
+    StrengthTemplate,
+)
 from runner_api.repositories.strength import (
     InMemoryExerciseRepository,
     InMemoryStrengthMaxRepository,
@@ -16,6 +21,7 @@ from runner_api.repositories.strength import (
     InMemoryStrengthTemplateRepository,
     StrengthRepositories,
 )
+from runner_api.routes import strength as strength_routes
 
 USER_ID = "user_strength"
 OTHER_USER_ID = "user_strength_other"
@@ -331,18 +337,318 @@ def test_strength_week_is_monday_through_sunday_and_orders_sessions() -> None:
 
 
 def test_session_date_patch_moves_session_between_weeks() -> None:
-    session_id = client.post("/strength/sessions", json=session_payload()).json()["id"]
+    created = client.post("/strength/sessions", json=session_payload()).json()
+    session_id = created["id"]
 
     response = client.patch(
         f"/strength/sessions/{session_id}", json={"date": "2026-09-28"}
     )
 
     assert response.status_code == 200
+    assert response.json()["id"] == session_id
+    assert response.json()["exercise_blocks"] == created["exercise_blocks"]
     assert client.get("/strength/weeks/2026-09-21").json()["sessions"] == []
     assert [
         item["id"]
         for item in client.get("/strength/weeks/2026-09-28").json()["sessions"]
     ] == [session_id]
+
+
+def test_program_days_are_ordered_prescription_only_and_schedule_new_ids(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    program = StrengthProgram.model_validate(
+        {
+            "id": "ppsa-sport-strength",
+            "name": "PPSA Sport Strength",
+            "days": [
+                {
+                    "id": "ppsa-day-1",
+                    "day_number": 1,
+                    "name": "Day 1",
+                    "exercise_blocks": [
+                        {
+                            "id": "program-clean",
+                            "exercise_id": "power_clean",
+                            "order": 1,
+                            "group_id": "pair-a",
+                            "planned_sets": [
+                                {
+                                    "id": "program-clean-set",
+                                    "set_number": 1,
+                                    "target_reps": 5,
+                                    "percentage": 55,
+                                    "max_source": "power_clean",
+                                }
+                            ],
+                        },
+                        {
+                            "id": "program-row",
+                            "exercise_id": "db_row",
+                            "order": 2,
+                            "group_id": "pair-a",
+                            "planned_sets": [
+                                {
+                                    "id": "program-row-set",
+                                    "set_number": 1,
+                                    "target_reps": 8,
+                                    "target_weight": 70,
+                                }
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "id": "ppsa-day-2",
+                    "day_number": 2,
+                    "name": "Day 2",
+                    "exercise_blocks": [],
+                },
+            ],
+        }
+    )
+    monkeypatch.setattr(strength_routes, "BUILT_IN_STRENGTH_PROGRAMS", (program,))
+    client.put(
+        "/strength/maxes/power_clean",
+        json={"value": 225, "effective_date": "2026-09-20"},
+    )
+    client.put(
+        "/strength/maxes/power_clean",
+        json={"value": 300, "effective_date": "2026-10-01"},
+    )
+
+    listed = client.get("/strength/programs")
+    scheduled = client.post(
+        "/strength/programs/ppsa-sport-strength/days/1/schedule",
+        json={"date": "2026-09-30"},
+    )
+
+    assert listed.status_code == 200
+    assert [day["day_number"] for day in listed.json()[0]["days"]] == [1, 2]
+    assert "actual_sets" not in listed.json()[0]["days"][0]["exercise_blocks"][0]
+    assert scheduled.status_code == 201
+    session = scheduled.json()
+    assert session["title"] == "PPSA Sport Strength · Day 1"
+    assert session["date"] == "2026-09-30"
+    assert session["exercise_blocks"][0]["id"] != "program-clean"
+    assert session["exercise_blocks"][0]["planned_sets"][0]["id"] != "program-clean-set"
+    assert session["exercise_blocks"][0]["actual_sets"] == []
+    assert session["exercise_blocks"][0]["group_id"] == "pair-a"
+    planned = session["exercise_blocks"][0]["planned_sets"][0]
+    assert planned["max_value_at_creation"] == 225
+    assert planned["target_weight"] == 125
+    assert program.days[0].exercise_blocks[0].planned_sets[0].target_weight is None
+
+
+def test_program_percentage_day_preserves_prescription_without_effective_max(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    program = StrengthProgram.model_validate(
+        {
+            "id": "percentage-program",
+            "name": "Percentage Program",
+            "days": [
+                {
+                    "id": "percentage-day-1",
+                    "day_number": 1,
+                    "name": "Day 1",
+                    "exercise_blocks": [
+                        {
+                            "id": "percentage-block",
+                            "exercise_id": "bench_press",
+                            "order": 1,
+                            "planned_sets": [
+                                {
+                                    "id": "percentage-set",
+                                    "set_number": 1,
+                                    "target_reps": 5,
+                                    "percentage": 65,
+                                    "max_source": "bench_press",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    monkeypatch.setattr(strength_routes, "BUILT_IN_STRENGTH_PROGRAMS", (program,))
+    client.put(
+        "/strength/maxes/bench_press",
+        json={"value": 275, "effective_date": "2026-10-01"},
+    )
+
+    response = client.post(
+        "/strength/programs/percentage-program/days/1/schedule",
+        json={"date": "2026-09-30"},
+    )
+
+    assert response.status_code == 201
+    planned = response.json()["exercise_blocks"][0]["planned_sets"][0]
+    assert planned["percentage"] == 65
+    assert planned["max_source"] == "bench_press"
+    assert planned["max_value_at_creation"] is None
+    assert planned["target_weight"] is None
+
+
+@pytest.mark.parametrize(
+    ("weekdays", "expected"),
+    [
+        ([0, 3], [date(2026, 9, 30), date(2026, 10, 1), date(2026, 10, 5)]),
+        ([0, 2, 4], [date(2026, 9, 30), date(2026, 10, 2), date(2026, 10, 5)]),
+        ([0, 1, 3, 4], [date(2026, 9, 30), date(2026, 10, 1), date(2026, 10, 2)]),
+    ],
+)
+def test_program_schedule_dates_keep_day_one_and_follow_selected_weekdays(
+    weekdays: list[int], expected: list[date]
+) -> None:
+    assert (
+        strength_routes._program_schedule_dates(date(2026, 9, 30), weekdays, 3)
+        == expected
+    )
+
+
+def test_schedules_all_ppsa_days_atomically_with_provenance_and_unique_ids() -> None:
+    response = client.post(
+        "/strength/programs/ppsa-sport-strength/schedule",
+        json={
+            "start_date": "2026-09-30",
+            "days_per_week": 3,
+            "selected_weekdays": [0, 2, 4],
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    sessions = body["sessions"]
+    assert len(sessions) == 36
+    assert sessions[0]["date"] == "2026-09-30"
+    assert sessions[1]["date"] == "2026-10-02"
+    assert sessions[-1]["date"] == "2026-12-21"
+    assert sessions[-1]["program"]["day_number"] == 36
+    assert [item["program"]["day_number"] for item in sessions] == list(range(1, 37))
+    assert len({item["id"] for item in sessions}) == 36
+    block_ids = [block["id"] for item in sessions for block in item["exercise_blocks"]]
+    set_ids = [
+        planned["id"]
+        for item in sessions
+        for block in item["exercise_blocks"]
+        for planned in block["planned_sets"]
+    ]
+    assert len(block_ids) == len(set(block_ids))
+    assert len(set_ids) == len(set(set_ids))
+    assert all(
+        not block["actual_sets"]
+        for item in sessions
+        for block in item["exercise_blocks"]
+    )
+    assert body["instance"]["total_workouts"] == 36
+    assert body["instance"]["selected_weekdays"] == [0, 2, 4]
+
+    moved = client.patch(
+        f"/strength/sessions/{sessions[0]['id']}",
+        json={"date": "2026-10-01"},
+    )
+    unchanged_next = client.get(f"/strength/sessions/{sessions[1]['id']}")
+    assert moved.status_code == 200
+    assert moved.json()["id"] == sessions[0]["id"]
+    assert moved.json()["program"] == sessions[0]["program"]
+    assert unchanged_next.json()["date"] == "2026-10-02"
+
+
+def test_whole_program_validates_weekday_count_and_warns_before_duplicate() -> None:
+    invalid = client.post(
+        "/strength/programs/ppsa-sport-strength/schedule",
+        json={
+            "start_date": "2026-09-30",
+            "days_per_week": 3,
+            "selected_weekdays": [0, 2],
+        },
+    )
+    payload = {
+        "start_date": "2026-09-30",
+        "days_per_week": 2,
+        "selected_weekdays": [0, 3],
+    }
+    first = client.post("/strength/programs/ppsa-sport-strength/schedule", json=payload)
+    duplicate = client.post(
+        "/strength/programs/ppsa-sport-strength/schedule", json=payload
+    )
+    confirmed = client.post(
+        "/strength/programs/ppsa-sport-strength/schedule",
+        json={**payload, "start_date": "2027-01-04", "allow_duplicate": True},
+    )
+
+    assert invalid.status_code == 422
+    assert first.status_code == 201
+    assert duplicate.status_code == 409
+    assert "already scheduled" in duplicate.json()["detail"]
+    assert confirmed.status_code == 201
+    assert (
+        confirmed.json()["instance"]["instance_id"]
+        != first.json()["instance"]["instance_id"]
+    )
+
+
+def test_scheduling_ppsa_day_twice_creates_independent_editable_snapshots() -> None:
+    client.put(
+        "/strength/maxes/power_clean",
+        json={"value": 225, "effective_date": "2026-09-01"},
+    )
+    client.put(
+        "/strength/maxes/front_squat",
+        json={"value": 300, "effective_date": "2026-09-01"},
+    )
+
+    first = client.post(
+        "/strength/programs/ppsa-sport-strength/days/1/schedule",
+        json={"date": "2026-09-30"},
+    ).json()
+    first_clean = next(
+        block
+        for block in first["exercise_blocks"]
+        if block["exercise_id"] == "hang_power_clean"
+    )
+    first_clean["exercise_id"] = "db_shrug"
+    updated = client.patch(
+        f"/strength/sessions/{first['id']}",
+        json={"exercise_blocks": first["exercise_blocks"]},
+    )
+    second = client.post(
+        "/strength/programs/ppsa-sport-strength/days/1/schedule",
+        json={"date": "2026-10-01"},
+    ).json()
+
+    assert updated.status_code == 200
+    assert updated.json()["id"] == first["id"]
+    assert any(
+        block["exercise_id"] == "db_shrug"
+        for block in updated.json()["exercise_blocks"]
+    )
+    assert second["id"] != first["id"]
+    assert {block["id"] for block in first["exercise_blocks"]}.isdisjoint(
+        {block["id"] for block in second["exercise_blocks"]}
+    )
+    assert {
+        planned_set["id"]
+        for block in first["exercise_blocks"]
+        for planned_set in block["planned_sets"]
+    }.isdisjoint(
+        {
+            planned_set["id"]
+            for block in second["exercise_blocks"]
+            for planned_set in block["planned_sets"]
+        }
+    )
+    assert any(
+        block["exercise_id"] == "hang_power_clean"
+        for block in second["exercise_blocks"]
+    )
+    source = client.get("/strength/programs").json()[0]
+    assert any(
+        block["exercise_id"] == "hang_power_clean"
+        for block in source["days"][0]["exercise_blocks"]
+    )
 
 
 def test_session_supports_distance_and_duration_execution() -> None:
@@ -605,6 +911,8 @@ def test_max_rejects_unit_field_in_pounds_only_contract() -> None:
         ("put", "/strength/maxes/bench_press", {}),
         ("get", "/strength/exercises", None),
         ("post", "/strength/exercises", {}),
+        ("get", "/strength/programs", None),
+        ("post", "/strength/programs/program-id/days/1/schedule", {}),
         ("get", "/strength/weeks/2026-09-21", None),
         ("get", "/strength/sessions/session-id", None),
         ("post", "/strength/sessions", {}),

@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any, Protocol, cast
 
 from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.types import TypeSerializer
 from botocore.exceptions import ClientError
 
 from runner_api.models.strength import (
@@ -68,6 +69,14 @@ class StrengthSessionRepository(Protocol):
         updated_at: datetime,
     ) -> StrengthSession: ...
 
+    def create_many(
+        self,
+        sessions: list[StrengthSession],
+        user_id: str,
+        created_at: datetime,
+        updated_at: datetime,
+    ) -> list[StrengthSession]: ...
+
     def update(
         self,
         session: StrengthSession,
@@ -83,6 +92,8 @@ class StrengthSessionRepository(Protocol):
         start_date: date,
         end_date: date,
     ) -> list[StrengthSession]: ...
+
+    def list_for_user(self, user_id: str) -> list[StrengthSession]: ...
 
 
 class StrengthTemplateRepository(Protocol):
@@ -185,6 +196,25 @@ class InMemoryStrengthSessionRepository:
         )
         return session
 
+    def create_many(
+        self,
+        sessions: list[StrengthSession],
+        user_id: str,
+        created_at: datetime,
+        updated_at: datetime,
+    ) -> list[StrengthSession]:
+        ids = [session.id for session in sessions]
+        if len(ids) != len(set(ids)) or any(item in self._records for item in ids):
+            raise StrengthResourceAlreadyExistsError("strength session")
+        for session in sessions:
+            self._records[session.id] = StrengthSessionRecord(
+                session=session,
+                user_id=user_id,
+                created_at=created_at,
+                updated_at=updated_at,
+            )
+        return sessions
+
     def update(
         self,
         session: StrengthSession,
@@ -222,6 +252,16 @@ class InMemoryStrengthSessionRepository:
                 for record in self._records.values()
                 if record.user_id == user_id
                 and start_date <= record.session.date <= end_date
+            ),
+            key=lambda session: (session.date, session.id),
+        )
+
+    def list_for_user(self, user_id: str) -> list[StrengthSession]:
+        return sorted(
+            (
+                record.session
+                for record in self._records.values()
+                if record.user_id == user_id
             ),
             key=lambda session: (session.date, session.id),
         )
@@ -382,6 +422,42 @@ class DynamoDBStrengthSessionRepository:
             raise
         return session
 
+    def create_many(
+        self,
+        sessions: list[StrengthSession],
+        user_id: str,
+        created_at: datetime,
+        updated_at: datetime,
+    ) -> list[StrengthSession]:
+        serializer = TypeSerializer()
+        table = cast(Any, self._table)
+        transact_items = [
+            {
+                "Put": {
+                    "TableName": table.name,
+                    "Item": {
+                        key: serializer.serialize(value)
+                        for key, value in strength_session_to_item(
+                            session, user_id, created_at, updated_at
+                        ).items()
+                    },
+                    "ConditionExpression": "attribute_not_exists(#id)",
+                    "ExpressionAttributeNames": {"#id": "id"},
+                }
+            }
+            for session in sessions
+        ]
+        try:
+            table.meta.client.transact_write_items(TransactItems=transact_items)
+        except ClientError as error:
+            if (
+                error.response.get("Error", {}).get("Code")
+                == "TransactionCanceledException"
+            ):
+                raise StrengthResourceAlreadyExistsError("strength session") from error
+            raise
+        return sessions
+
     def update(
         self,
         session: StrengthSession,
@@ -422,6 +498,15 @@ class DynamoDBStrengthSessionRepository:
                 f"{start_date.isoformat()}#",
                 f"{end_date.isoformat()}$",
             ),
+            ScanIndexForward=True,
+        )
+        return [strength_session_from_item(item) for item in items]
+
+    def list_for_user(self, user_id: str) -> list[StrengthSession]:
+        items = _query_all(
+            self._table,
+            IndexName=USER_DATE_INDEX,
+            KeyConditionExpression=Key("user_id").eq(user_id),
             ScanIndexForward=True,
         )
         return [strength_session_from_item(item) for item in items]

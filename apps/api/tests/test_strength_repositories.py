@@ -7,6 +7,7 @@ from runner_api.models.strength import (
     ExerciseBlock,
     PlannedSet,
     StrengthMax,
+    StrengthProgramProvenance,
     StrengthSession,
     StrengthTemplate,
     TemplateExerciseBlock,
@@ -95,6 +96,16 @@ def test_session_item_round_trip_preserves_nested_planned_and_actual_sets() -> N
                 ],
             ),
         ],
+        program=StrengthProgramProvenance(
+            program_id="ppsa-sport-strength",
+            program_name="PPSA Sport Strength",
+            instance_id="instance-1",
+            day_number=1,
+            total_days=36,
+            start_date=date(2026, 9, 21),
+            days_per_week=3,
+            selected_weekdays=[0, 2, 4],
+        ),
     )
 
     stored = strength_session_to_item(
@@ -102,6 +113,7 @@ def test_session_item_round_trip_preserves_nested_planned_and_actual_sets() -> N
     )
 
     assert stored["user_date_key"] == "2026-09-21#session-1"
+    assert stored["program"]["instance_id"] == "instance-1"
     distance_set = stored["exercise_blocks"][0]["planned_sets"][0]
     duration_set = stored["exercise_blocks"][1]["planned_sets"][0]
     assert distance_set["target_distance"] == Decimal("20.0")
