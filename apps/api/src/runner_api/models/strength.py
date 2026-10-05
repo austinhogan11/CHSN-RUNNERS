@@ -215,6 +215,7 @@ class StrengthSession(BaseModel):
     title: str
     notes: str | None = None
     exercise_blocks: list[ExerciseBlock]
+    program: "StrengthProgramProvenance | None" = None
 
     @model_validator(mode="after")
     def validate_structure(self) -> "StrengthSession":
@@ -306,6 +307,8 @@ class TemplatePlannedSetInput(BaseModel):
 
 
 class TemplatePlannedSet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str
     set_number: int = Field(ge=1)
     target_reps: int | None = Field(default=None, gt=0)
@@ -356,6 +359,8 @@ class TemplateExerciseBlockInput(BaseModel):
 
 
 class TemplateExerciseBlock(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str
     exercise_id: str
     order: int = Field(ge=1)
@@ -379,6 +384,93 @@ class StrengthTemplate(BaseModel):
         _validate_block_order(self.exercise_blocks)
         _validate_nested_ids(self.exercise_blocks)
         return self
+
+
+class StrengthProgramDay(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    day_number: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=200)
+    exercise_blocks: list[TemplateExerciseBlock]
+
+    @model_validator(mode="after")
+    def validate_structure(self) -> "StrengthProgramDay":
+        _validate_block_order(self.exercise_blocks)
+        _validate_nested_ids(self.exercise_blocks)
+        return self
+
+
+class StrengthProgram(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str = Field(min_length=1, max_length=200)
+    days: list[StrengthProgramDay]
+
+    @model_validator(mode="after")
+    def validate_days(self) -> "StrengthProgram":
+        numbers = [day.day_number for day in self.days]
+        if len(numbers) != len(set(numbers)):
+            raise ValueError("program day numbers must be unique")
+        if numbers != sorted(numbers):
+            raise ValueError("program days must be ordered by day number")
+        return self
+
+
+class StrengthProgramDaySchedule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    date: Date
+
+
+class StrengthProgramSchedule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    start_date: Date
+    days_per_week: int = Field(ge=2, le=7)
+    selected_weekdays: list[int] = Field(min_length=2, max_length=7)
+    allow_duplicate: bool = False
+
+    @model_validator(mode="after")
+    def validate_weekdays(self) -> "StrengthProgramSchedule":
+        if len(self.selected_weekdays) != len(set(self.selected_weekdays)):
+            raise ValueError("selected weekdays must be unique")
+        if any(day < 0 or day > 6 for day in self.selected_weekdays):
+            raise ValueError("selected weekdays must be between 0 and 6")
+        if len(self.selected_weekdays) != self.days_per_week:
+            raise ValueError("selected weekday count must match days_per_week")
+        return self
+
+
+class StrengthProgramProvenance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    program_id: str
+    program_name: str
+    instance_id: str
+    day_number: int = Field(ge=1)
+    total_days: int = Field(ge=1)
+    start_date: Date
+    days_per_week: int = Field(ge=1, le=7)
+    selected_weekdays: list[int]
+
+
+class StrengthProgramInstanceSummary(BaseModel):
+    program_id: str
+    program_name: str
+    instance_id: str
+    total_workouts: int
+    scheduled_workouts: int
+    completed_workouts: int
+    start_date: Date
+    days_per_week: int
+    selected_weekdays: list[int]
+
+
+class StrengthProgramScheduleResult(BaseModel):
+    instance: StrengthProgramInstanceSummary
+    sessions: list[StrengthSession]
 
 
 class StrengthTemplateCreate(BaseModel):

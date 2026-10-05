@@ -92,6 +92,8 @@ describe("StrengthPage", () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url === "/api/strength/maxes") return response(maxes);
       if (url === "/api/strength/exercises") return response(exercises);
+      if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
       if (url === "/api/strength/weeks/2026-09-28") return response(emptyWeek);
       if (url === "/api/strength/weeks/2026-09-21") {
         return response({ week_start: "2026-09-21", week_end: "2026-09-27", sessions: [] });
@@ -136,6 +138,19 @@ describe("StrengthPage", () => {
     expect(maxesRegion.compareDocumentPosition(library) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(library.compareDocumentPosition(weeklyTraining) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText("Pounds")).not.toBeInTheDocument();
+    const maxesDisclosure = within(maxesRegion).getByRole("button", { name: "Maxes" });
+    expect(maxesDisclosure).toHaveAttribute("aria-expanded", "false");
+    const bigThree = within(maxesRegion).getByLabelText("Big 3 maxes");
+    expect(within(bigThree).getByText("Bench Press")).toBeInTheDocument();
+    expect(within(bigThree).getByText("Back Squat")).toBeInTheDocument();
+    expect(within(bigThree).getByText("Deadlift")).toBeInTheDocument();
+    expect(within(bigThree).getByText("265 lb")).toBeInTheDocument();
+    expect(within(bigThree).getAllByText("—")).toHaveLength(2);
+    expect(within(maxesRegion).queryByRole("group", { name: "Bench Press max history" })).not.toBeInTheDocument();
+
+    fireEvent.click(maxesDisclosure);
+
+    expect(maxesDisclosure).toHaveAttribute("aria-expanded", "true");
     const benchSelect = within(maxesRegion).getByRole("button", { name: "Bench Press" });
     const benchCard = benchSelect.closest("article")!;
     expect(benchSelect).toHaveAttribute("aria-pressed", "true");
@@ -145,6 +160,10 @@ describe("StrengthPage", () => {
     expect(within(maxesRegion).queryByText("History")).not.toBeInTheDocument();
     expect(within(maxesRegion).getByRole("group", { name: "Bench Press max history" })).toBeInTheDocument();
     expect(within(maxesRegion).getByRole("button", { name: "Year to date" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(maxesDisclosure);
+    expect(maxesDisclosure).toHaveAttribute("aria-expanded", "false");
+    expect(within(maxesRegion).queryByRole("group", { name: "Bench Press max history" })).not.toBeInTheDocument();
 
     const disclosure = within(library).getByRole("button", {
       name: "Exercise Library, 3 exercises",
@@ -188,6 +207,7 @@ describe("StrengthPage", () => {
     render(<StrengthPage />);
 
     const maxesRegion = await screen.findByRole("region", { name: "Maxes" });
+    fireEvent.click(within(maxesRegion).getByRole("button", { name: "Maxes" }));
     const benchChart = within(maxesRegion).getByRole("group", { name: "Bench Press max history" });
     expect(benchChart).toHaveAttribute("data-domain-start", "2026-01-01");
     expect(benchChart).toHaveAttribute("data-domain-end", "2026-09-29");
@@ -262,6 +282,8 @@ describe("StrengthPage", () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url === "/api/strength/maxes") return response(maxes);
       if (url === "/api/strength/exercises") return response(exercises);
+      if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
       if (url.startsWith("/api/strength/weeks/")) {
         weekGetCount += 1;
         return response({
@@ -284,7 +306,7 @@ describe("StrengthPage", () => {
 
     render(<StrengthPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "+ Add session" }));
+    fireEvent.click(await screen.findByRole("button", { name: "+ Blank workout" }));
 
     const sessionSelector = within(await screen.findByLabelText("Strength sessions"));
     expect(sessionSelector.getByRole("button", { name: /Strength Session/ })).toHaveAttribute(
@@ -333,6 +355,8 @@ describe("StrengthPage", () => {
         maxGetCount += 1;
         return response(maxGetCount === 1 ? maxes : refreshed);
       }
+      if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
       if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/exercises") return response(exercises);
       if (url === "/api/strength/maxes/bench_press") return response(refreshed.current[0]);
@@ -385,6 +409,8 @@ describe("StrengthPage", () => {
         maxGetCount += 1;
         return response(maxGetCount === 1 ? maxes : refreshed);
       }
+      if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
       if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/exercises") return response(exercises);
       if (url === "/api/strength/maxes/bench_press") return response(refreshed.current[0]);
@@ -450,6 +476,8 @@ describe("StrengthPage", () => {
       if (url === "/api/strength/maxes/bench_press" && options?.method === "PUT") {
         return response({}, 500);
       }
+      if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
       if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/maxes") return response(maxes);
       if (url === "/api/strength/exercises") return response(exercises);
@@ -480,6 +508,8 @@ describe("StrengthPage", () => {
     let exerciseGetCount = 0;
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url === "/api/strength/exercises" && options?.method === "POST") return response(custom, 201);
+      if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
       if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/maxes") return response(maxes);
       if (url === "/api/strength/exercises") {
@@ -531,6 +561,8 @@ describe("StrengthPage", () => {
   it("shows custom exercise API errors without adding the exercise", async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url === "/api/strength/maxes") return response(maxes);
+      if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
       if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
       if (url === "/api/strength/exercises" && options?.method === "POST") return response({}, 500);
       if (url === "/api/strength/exercises") return response(exercises);
@@ -560,12 +592,17 @@ function strengthFetch(maxData = maxes) {
   return vi.fn(async (url: string) => {
     if (url === "/api/strength/maxes") return response(maxData);
     if (url === "/api/strength/exercises") return response(exercises);
+    if (url === "/api/strength/programs") return response([]);
+      if (url === "/api/strength/program-instances") return response([]);
     if (url.startsWith("/api/strength/weeks/")) return response(emptyWeek);
     throw new Error(`Unexpected URL: ${url}`);
   });
 }
 
 async function findMaxCard(name: string): Promise<HTMLElement> {
+  const maxesRegion = await screen.findByRole("region", { name: "Maxes" });
+  const disclosure = within(maxesRegion).getByRole("button", { name: "Maxes" });
+  if (disclosure.getAttribute("aria-expanded") === "false") fireEvent.click(disclosure);
   const selector = await screen.findByRole("button", { name });
   return selector.closest("article")!;
 }

@@ -4,6 +4,10 @@ import type {
   StrengthMax,
   StrengthMaxCollection,
   StrengthMaxUpsert,
+  StrengthProgram,
+  StrengthProgramInstanceSummary,
+  StrengthProgramSchedule,
+  StrengthProgramScheduleResult,
   StrengthSession,
   StrengthSessionCreate,
   StrengthSessionUpdate,
@@ -14,11 +18,13 @@ const API_BASE = "/api/strength";
 
 export class StrengthApiError extends Error {
   readonly status: number;
+  readonly detail: string | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, detail: string | null = null) {
     super(message);
     this.name = "StrengthApiError";
     this.status = status;
+    this.detail = detail;
   }
 }
 
@@ -64,6 +70,41 @@ export async function getStrengthSession(
   return request<StrengthSession>(`/sessions/${encodeURIComponent(sessionId)}`, token);
 }
 
+export async function getStrengthPrograms(token: string): Promise<StrengthProgram[]> {
+  return request<StrengthProgram[]>("/programs", token);
+}
+
+export async function getStrengthProgramInstances(
+  token: string,
+): Promise<StrengthProgramInstanceSummary[]> {
+  return request<StrengthProgramInstanceSummary[]>("/program-instances", token);
+}
+
+export async function scheduleStrengthProgram(
+  programId: string,
+  payload: StrengthProgramSchedule,
+  token: string,
+): Promise<StrengthProgramScheduleResult> {
+  return request<StrengthProgramScheduleResult>(
+    `/programs/${encodeURIComponent(programId)}/schedule`,
+    token,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export async function scheduleStrengthProgramDay(
+  programId: string,
+  dayNumber: number,
+  date: string,
+  token: string,
+): Promise<StrengthSession> {
+  return request<StrengthSession>(
+    `/programs/${encodeURIComponent(programId)}/days/${dayNumber}/schedule`,
+    token,
+    { method: "POST", body: JSON.stringify({ date }) },
+  );
+}
+
 export async function createStrengthSession(
   payload: StrengthSessionCreate,
   token: string,
@@ -104,8 +145,9 @@ export function strengthErrorMessage(error: unknown, action: string): string {
       return "Your session expired. Sign in and try again.";
     }
     if (error.status === 422) {
-      return `Check the ${action} values and try again.`;
+      return error.detail ?? `Check the ${action} values and try again.`;
     }
+    if (error.status === 409) return error.detail ?? `Unable to save ${action}.`;
   }
   return `Unable to save ${action}. Try again.`;
 }
@@ -124,8 +166,32 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    throw new StrengthApiError("Strength API request failed", response.status);
+    throw new StrengthApiError(
+      "Strength API request failed",
+      response.status,
+      await responseErrorDetail(response),
+    );
   }
 
   return response.json() as Promise<T>;
+}
+
+async function responseErrorDetail(response: Response): Promise<string | null> {
+  try {
+    const body = await response.json() as { detail?: unknown };
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail)) {
+      const messages = body.detail
+        .map((item) => (
+          typeof item === "object" && item !== null && "msg" in item
+            ? String(item.msg)
+            : null
+        ))
+        .filter((message): message is string => message !== null);
+      return messages.length > 0 ? messages.join(" ") : null;
+    }
+  } catch {
+    // The status-based fallback remains useful for non-JSON responses.
+  }
+  return null;
 }

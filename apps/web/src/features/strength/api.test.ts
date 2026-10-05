@@ -6,9 +6,14 @@ import {
   deleteStrengthSession,
   getExercises,
   getStrengthMaxes,
+  getStrengthPrograms,
+  getStrengthProgramInstances,
   getStrengthSession,
   getStrengthWeek,
   saveStrengthMax,
+  scheduleStrengthProgramDay,
+  scheduleStrengthProgram,
+  strengthErrorMessage,
   updateStrengthSession,
 } from "./api";
 
@@ -104,6 +109,79 @@ describe("strength API", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/strength/sessions/session%2F1", options);
   });
 
+  it("loads programs and schedules a program day on a selected date", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getStrengthPrograms("clerk-token");
+    await scheduleStrengthProgramDay(
+      "ppsa/sport",
+      4,
+      "2026-09-30",
+      "clerk-token",
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/strength/programs", {
+      headers: { Authorization: "Bearer clerk-token" },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/strength/programs/ppsa%2Fsport/days/4/schedule",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer clerk-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ date: "2026-09-30" }),
+      },
+    );
+  });
+
+  it("schedules a whole program with one authenticated request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ instance: {}, sessions: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getStrengthProgramInstances("clerk-token");
+    await scheduleStrengthProgram(
+      "ppsa/sport",
+      {
+        start_date: "2026-09-30",
+        days_per_week: 3,
+        selected_weekdays: [0, 2, 4],
+      },
+      "clerk-token",
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/strength/program-instances", {
+      headers: { Authorization: "Bearer clerk-token" },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/strength/programs/ppsa%2Fsport/schedule",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer clerk-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          start_date: "2026-09-30",
+          days_per_week: 3,
+          selected_weekdays: [0, 2, 4],
+        }),
+      },
+    );
+  });
+
   it("creates, updates, and deletes a session with explicit JSON payloads", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -147,5 +225,33 @@ describe("strength API", () => {
       method: "DELETE",
       headers: { Authorization: "Bearer clerk-token" },
     });
+  });
+
+  it("preserves useful FastAPI validation detail", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        detail: [
+          {
+            loc: ["body", "exercise_blocks", 0, "planned_sets", 0],
+            msg: "Value error, percentage and max source must be provided together",
+            type: "value_error",
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    let message = "";
+    try {
+      await updateStrengthSession("session-1", { exercise_blocks: [] }, "clerk-token");
+    } catch (error) {
+      message = strengthErrorMessage(error, "strength session");
+    }
+
+    expect(message).toBe(
+      "Value error, percentage and max source must be provided together",
+    );
   });
 });

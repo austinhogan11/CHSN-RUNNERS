@@ -10,9 +10,12 @@ import {
   deleteStrengthSession,
   getExercises,
   getStrengthMaxes,
+  getStrengthPrograms,
+  getStrengthProgramInstances,
   getStrengthSession,
   getStrengthWeek,
   saveStrengthMax,
+  scheduleStrengthProgram,
   strengthErrorMessage,
   updateStrengthSession,
 } from "../api";
@@ -20,6 +23,9 @@ import type {
   Exercise,
   ExerciseCreate,
   StrengthMaxCollection,
+  StrengthProgram,
+  StrengthProgramInstanceSummary,
+  StrengthProgramSchedule,
   StrengthSessionCreate,
   StrengthSessionUpdate,
   StrengthWeek,
@@ -38,10 +44,18 @@ const REQUIRED_MAX_SOURCES = [
   ["overhead_press", "Overhead Press"],
 ] as const;
 
+const BIG_THREE_MAX_SOURCES = [
+  ["bench_press", "Bench Press"],
+  ["back_squat", "Back Squat"],
+  ["deadlift", "Deadlift"],
+] as const;
+
 export function StrengthPage() {
   const { getToken } = useAuth();
   const [maxes, setMaxes] = useState<StrengthMaxCollection | null>(null);
   const [exercises, setExercises] = useState<Exercise[] | null>(null);
+  const [programs, setPrograms] = useState<StrengthProgram[] | null>(null);
+  const [programInstances, setProgramInstances] = useState<StrengthProgramInstanceSummary[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const today = useMemo(() => formatLocalDate(new Date()), []);
@@ -74,6 +88,8 @@ export function StrengthPage() {
     return Promise.all([
       getStrengthMaxes(token),
       getExercises(token),
+      getStrengthPrograms(token),
+      getStrengthProgramInstances(token),
       getStrengthWeek(currentWeekStart, token),
     ]);
   }, [currentWeekStart, getToken]);
@@ -82,9 +98,11 @@ export function StrengthPage() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [maxData, exerciseData, weekData] = await fetchStrengthData();
+      const [maxData, exerciseData, programData, instanceData, weekData] = await fetchStrengthData();
       setMaxes(maxData);
       setExercises(exerciseData);
+      setPrograms(programData);
+      setProgramInstances(instanceData);
       setWeek(weekData);
     } catch {
       setLoadError("Unable to load strength dashboard.");
@@ -96,10 +114,12 @@ export function StrengthPage() {
   useEffect(() => {
     let isActive = true;
     fetchStrengthData()
-      .then(([maxData, exerciseData, weekData]) => {
+      .then(([maxData, exerciseData, programData, instanceData, weekData]) => {
         if (!isActive) return;
         setMaxes(maxData);
         setExercises(exerciseData);
+        setPrograms(programData);
+        setProgramInstances(instanceData);
         setWeek(weekData);
       })
       .catch(() => {
@@ -117,7 +137,7 @@ export function StrengthPage() {
     return <p className="panel page-message" role="status">Loading strength...</p>;
   }
 
-  if (loadError || !maxes || !exercises || !week) {
+  if (loadError || !maxes || !exercises || !programs || !programInstances || !week) {
     return (
       <section className="panel page-message strength-load-error" role="alert">
         <p>{loadError ?? "Unable to load strength dashboard."}</p>
@@ -145,6 +165,17 @@ export function StrengthPage() {
   async function handleCreateSession(payload: StrengthSessionCreate) {
     const token = await requireToken();
     const created = await createStrengthSession(payload, token);
+    await refreshWeek(token);
+    return created;
+  }
+
+  async function handleScheduleProgram(
+    programId: string,
+    payload: StrengthProgramSchedule,
+  ) {
+    const token = await requireToken();
+    const created = await scheduleStrengthProgram(programId, payload, token);
+    setProgramInstances(await getStrengthProgramInstances(token));
     await refreshWeek(token);
     return created;
   }
@@ -187,6 +218,9 @@ export function StrengthPage() {
         week={week}
         exercises={exercises}
         maxSources={maxSources}
+        maxHistory={maxes.history}
+        programs={programs}
+        programInstances={programInstances}
         isCurrentWeek={isCurrentWeek}
         isWeekLoading={isWeekLoading}
         weekError={weekError}
@@ -194,6 +228,7 @@ export function StrengthPage() {
         onNextWeek={showNextWeek}
         onCurrentWeek={showCurrentWeek}
         onCreate={handleCreateSession}
+        onScheduleProgram={handleScheduleProgram}
         onUpdate={handleUpdateSession}
         onReload={handleReloadSession}
         onDelete={handleDeleteSession}
@@ -210,6 +245,7 @@ interface MaxesPanelProps {
 }
 
 function MaxesPanel({ maxes, maxSources, getToken, onRefresh }: MaxesPanelProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [selectedKey, setSelectedKey] = useState(() => defaultMaxSource(maxes, maxSources));
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [value, setValue] = useState("");
@@ -275,95 +311,118 @@ function MaxesPanel({ maxes, maxSources, getToken, onRefresh }: MaxesPanelProps)
 
   return (
     <section className="strength-section" aria-labelledby="maxes-heading">
-      <div className="section-heading">
-        <h3 id="maxes-heading">Maxes</h3>
-      </div>
-      <div className="strength-max-grid">
-        {maxSources.map((source) => {
-          const current = currentByKey.get(source.key);
-          const isEditing = editingKey === source.key;
-          return (
-            <article
-              className={`strength-max-card${selectedKey === source.key ? " is-selected" : ""}`}
-              key={source.key}
-              onClick={() => setSelectedKey(source.key)}
-            >
-              <div className="strength-max-summary">
-                <h4>
-                  <button
-                    className="strength-max-select"
-                    type="button"
-                    aria-pressed={selectedKey === source.key}
-                    onClick={() => setSelectedKey(source.key)}
-                  >
-                    {source.label}
-                  </button>
-                </h4>
-                <div className="strength-max-control">
-                  {isEditing ? (
-                    <div className="strength-max-inline-editor">
-                      <input
-                        aria-label={`${source.label} max`}
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={value}
-                        onChange={(event) => setValue(event.target.value)}
-                        onFocus={(event) => event.currentTarget.select()}
-                        onBlur={() => {
-                          if (skipBlur.current) {
-                            skipBlur.current = false;
-                            return;
-                          }
-                          void saveMax(source);
-                        }}
-                        onClick={(event) => event.stopPropagation()}
-                        onKeyDown={(event) => {
-                          if (event.key === "Escape") {
-                            event.preventDefault();
-                            skipBlur.current = true;
-                            cancelEdit();
-                          } else if (event.key === "Enter") {
-                            event.preventDefault();
-                            event.currentTarget.blur();
-                          }
-                        }}
-                        disabled={isSaving}
-                        autoFocus
-                      />
-                      <span>lb</span>
+      <button
+        className="panel strength-maxes-disclosure"
+        type="button"
+        aria-label="Maxes"
+        aria-expanded={isExpanded}
+        aria-controls="strength-maxes-content"
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+      >
+        <span className="strength-maxes-title" id="maxes-heading">Maxes</span>
+        <span className="strength-big-three" aria-label="Big 3 maxes">
+          {BIG_THREE_MAX_SOURCES.map(([key, label]) => {
+            const current = currentByKey.get(key);
+            return (
+              <span className="strength-big-three-item" key={key}>
+                <span>{label}</span>
+                <strong>{current ? `${formatPounds(current.value)} lb` : "—"}</strong>
+              </span>
+            );
+          })}
+        </span>
+        <span className="disclosure-icon" aria-hidden="true">⌄</span>
+      </button>
+      {isExpanded && (
+        <div className="strength-maxes-content" id="strength-maxes-content">
+          <div className="strength-max-grid">
+            {maxSources.map((source) => {
+              const current = currentByKey.get(source.key);
+              const isEditing = editingKey === source.key;
+              return (
+                <article
+                  className={`strength-max-card${selectedKey === source.key ? " is-selected" : ""}`}
+                  key={source.key}
+                  onClick={() => setSelectedKey(source.key)}
+                >
+                  <div className="strength-max-summary">
+                    <h4>
+                      <button
+                        className="strength-max-select"
+                        type="button"
+                        aria-pressed={selectedKey === source.key}
+                        onClick={() => setSelectedKey(source.key)}
+                      >
+                        {source.label}
+                      </button>
+                    </h4>
+                    <div className="strength-max-control">
+                      {isEditing ? (
+                        <div className="strength-max-inline-editor">
+                          <input
+                            aria-label={`${source.label} max`}
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={value}
+                            onChange={(event) => setValue(event.target.value)}
+                            onFocus={(event) => event.currentTarget.select()}
+                            onBlur={() => {
+                              if (skipBlur.current) {
+                                skipBlur.current = false;
+                                return;
+                              }
+                              void saveMax(source);
+                            }}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") {
+                                event.preventDefault();
+                                skipBlur.current = true;
+                                cancelEdit();
+                              } else if (event.key === "Enter") {
+                                event.preventDefault();
+                                event.currentTarget.blur();
+                              }
+                            }}
+                            disabled={isSaving}
+                            autoFocus
+                          />
+                          <span>lb</span>
+                        </div>
+                      ) : (
+                        <button
+                          className={current ? "strength-max-value" : "strength-max-empty"}
+                          type="button"
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            beginEdit(source);
+                          }}
+                        >
+                          {current ? `${formatPounds(current.value)} lb` : "Add max"}
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <button
-                      className={current ? "strength-max-value" : "strength-max-empty"}
-                      type="button"
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") event.stopPropagation();
-                      }}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        beginEdit(source);
-                      }}
-                    >
-                      {current ? `${formatPounds(current.value)} lb` : "Add max"}
-                    </button>
+                  </div>
+                  {saveError?.key === source.key && (
+                    <p className="form-error strength-max-error" role="alert">{saveError.message}</p>
                   )}
-                </div>
-              </div>
-              {saveError?.key === source.key && (
-                <p className="form-error strength-max-error" role="alert">{saveError.message}</p>
-              )}
-            </article>
-          );
-        })}
-      </div>
-      {selectedSource && (
-        <StrengthMaxHistory
-          exerciseKey={selectedSource.key}
-          exerciseLabel={selectedSource.label}
-          current={selectedCurrent}
-          history={selectedHistory}
-        />
+                </article>
+              );
+            })}
+          </div>
+          {selectedSource && (
+            <StrengthMaxHistory
+              exerciseKey={selectedSource.key}
+              exerciseLabel={selectedSource.label}
+              current={selectedCurrent}
+              history={selectedHistory}
+            />
+          )}
+        </div>
       )}
     </section>
   );
